@@ -1,0 +1,19 @@
+[package]
+name = "tournee"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.79"
+cached = "0.48.1"
+caracat = { git = "https://github.com/maxmouchet/caracat", branch = "main" }
+# caracat = "1.0.0"
+ip_network = "0.4.1"
+itertools = "0.12.0"
+log = "0.4.21"
+pantrace = "0.6.2"
+pnet = "0.34.0"
+rand = "0.8.5"
+serde = "1.0.195"
