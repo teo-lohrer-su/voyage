@@ -12,11 +12,11 @@ use caracat::rate_limiter::RateLimiter;
 use caracat::receiver;
 use caracat::sender::{self, Sender};
 use itertools::Itertools;
-use tournee::algorithms::diamond_miner::DiamondMiner;
-use tournee::algorithms::utils::{general_prob, general_stopping_point, stopping_point};
+use voyage::algorithms::diamond_miner::DiamondMiner;
+use voyage::algorithms::utils::{general_prob, general_stopping_point, stopping_point};
 
 use anyhow::Result;
-use tournee::probe::probe;
+use voyage::probe::probe;
 
 fn main() -> Result<()> {
     println!("Hello, world!");

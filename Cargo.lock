@@ -1164,22 +1164,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tournee"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "cached",
- "caracat",
- "ip_network",
- "itertools",
- "log",
- "pantrace",
- "pnet 0.34.0",
- "rand",
- "serde",
-]
-
-[[package]]
 name = "unicode-ident"
 version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1196,6 +1180,22 @@ name = "version_check"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
+
+[[package]]
+name = "voyage"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cached",
+ "caracat",
+ "ip_network",
+ "itertools",
+ "log",
+ "pantrace",
+ "pnet 0.34.0",
+ "rand",
+ "serde",
+]
 
 [[package]]
 name = "warts"
