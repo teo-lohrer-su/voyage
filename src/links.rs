@@ -24,17 +24,12 @@ pub(crate) fn get_replies_by_flow<'a>(replies: &[&'a Reply]) -> HashMap<Flow, Ve
 // fn get_pairs_by_flow<'a>(replies: &'a [&'a Reply]) -> HashMap<Flow, Vec<ReplyPair<'a>>> {
 fn get_pairs_by_flow<'a>(replies: Vec<&'a Reply>) -> HashMap<Flow, Vec<ReplyPair<'a>>> {
     let mut pairs_by_flow: HashMap<Flow, Vec<ReplyPair<'a>>> = HashMap::new();
-    let replies_by_flow: HashMap<Flow, Vec<&Reply>> =
-        replies.iter().fold(HashMap::new(), |mut acc, &r| {
-            acc.entry(r.into()).or_default().push(r);
-            acc
-        });
+
+    let replies_by_flow = get_replies_by_flow(&replies);
+
     for (flow, flow_replies) in replies_by_flow {
-        let ttl_replies: HashMap<TTL, Vec<&Reply>> =
-            flow_replies.iter().fold(HashMap::new(), |mut acc, &r| {
-                acc.entry(r.probe_ttl).or_default().push(r);
-                acc
-            });
+        let ttl_replies = get_replies_by_ttl(flow_replies);
+
         let (min_ttl, max_ttl) = (
             *ttl_replies.keys().min().unwrap(),
             *ttl_replies.keys().max().unwrap(),
@@ -49,12 +44,14 @@ fn get_pairs_by_flow<'a>(replies: Vec<&'a Reply>) -> HashMap<Flow, Vec<ReplyPair
             let near_replies = fetch_replies(near_ttl);
             let far_replies = fetch_replies(near_ttl + 1);
             iproduct!(near_replies, far_replies).for_each(|replies| {
-                let pair = ReplyPair {
-                    ttl: near_ttl,
-                    first_reply: replies.0,
-                    second_reply: replies.1,
-                };
-                pairs_by_flow.entry(flow).or_default().push(pair);
+                if replies.0.is_some() || replies.1.is_some() {
+                    let pair = ReplyPair {
+                        ttl: near_ttl,
+                        first_reply: replies.0,
+                        second_reply: replies.1,
+                    };
+                    pairs_by_flow.entry(flow).or_default().push(pair);
+                }
             })
         }
     }
@@ -64,7 +61,7 @@ fn get_pairs_by_flow<'a>(replies: Vec<&'a Reply>) -> HashMap<Flow, Vec<ReplyPair
 pub(crate) fn _get_pairs_by_flow<'a>(replies: &'a [&'a Reply]) -> HashMap<Flow, Vec<ReplyPair>> {
     let mut pairs_by_flow: HashMap<Flow, Vec<ReplyPair>> = HashMap::new();
 
-    let replies_by_flow = get_replies_by_flow(&replies);
+    let replies_by_flow = get_replies_by_flow(replies);
 
     for (flow, flow_replies) in replies_by_flow {
         let replies_by_ttl = get_replies_by_ttl(flow_replies);
@@ -95,7 +92,6 @@ pub(crate) fn _get_pairs_by_flow<'a>(replies: &'a [&'a Reply]) -> HashMap<Flow, 
     pairs_by_flow
 }
 
-// pub(crate) fn get_links_by_ttl<'a>(replies: &'a [&'a Reply]) -> HashMap<TTL, HashSet<Link<'a>>> {
 pub(crate) fn get_links_by_ttl(replies: Vec<&Reply>) -> HashMap<TTL, HashSet<Link<'_>>> {
     let mut links_by_ttl: HashMap<u8, HashSet<Link>> = HashMap::new();
     let pairs_by_flow = get_pairs_by_flow(replies);

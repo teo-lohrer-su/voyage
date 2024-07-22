@@ -3,21 +3,17 @@ mod sequential_mapper;
 mod types;
 
 use caracat::models::{Probe, Reply, L4};
-use pnet::packet::ip;
-pub use probe_generator::*;
 pub use sequential_mapper::*;
 
 use std::collections::{HashMap, HashSet};
 use std::net::IpAddr;
+use std::ops::Range;
 use std::vec;
 
-use crate::algorithms::utils::general_stopping_point;
+use crate::algorithms::utils::{general_stopping_point, stopping_point};
 use crate::links::get_links_by_ttl;
 use crate::types::{Link, Port, TTL};
 
-use super::utils::stopping_point;
-
-// pub struct DiamondMiner<'a> {
 pub struct DiamondMiner {
     // Configuration parameters dst_addr: IpAddr,
     dst_addr: IpAddr,
@@ -51,7 +47,7 @@ impl DiamondMiner {
         protocol: L4,
         confidence: u32,
         max_round: u32,
-    ) -> Self { 
+    ) -> Self {
         let protocol = match (protocol, dst_addr) {
             (L4::ICMP, IpAddr::V4(_)) => L4::ICMP,
             (L4::ICMP, IpAddr::V6(_)) => L4::ICMPv6,
@@ -77,8 +73,15 @@ impl DiamondMiner {
         }
     }
 
-    fn links_by_ttl(&self) -> HashMap<TTL, HashSet<Link>> {
+    pub fn links_by_ttl(&self) -> HashMap<TTL, HashSet<Link>> {
         get_links_by_ttl(self.time_exceeded_replies())
+    }
+
+    pub fn n_links_by_ttl(&self) -> HashMap<TTL, usize> {
+        get_links_by_ttl(self.time_exceeded_replies())
+            .iter()
+            .map(|(&k, v)| (k, v.len()))
+            .collect()
     }
 
     fn replies(&self) -> Vec<&Reply> {
@@ -88,14 +91,15 @@ impl DiamondMiner {
             .collect::<Vec<_>>()
     }
 
-    fn time_exceeded_replies(&self) -> Vec<&Reply> {
+    pub fn time_exceeded_replies(&self) -> Vec<&Reply> {
         self.replies()
-            .iter()
-            .copied()
+            .into_iter()
+            // .copied()
             .filter(|&r| r.is_time_exceeded())
             .collect::<Vec<_>>()
     }
 
+    #[allow(dead_code)]
     fn nodes_distribution_at_ttl<'a>(
         &self,
         nodes: Vec<&'a IpAddr>,
@@ -138,6 +142,69 @@ impl DiamondMiner {
         link_dist
     }
 
+    pub fn unresolved_nodes_at_ttl(&self, ttl: u8) -> (HashSet<IpAddr>, usize) {
+        let nodes_at_ttl: HashSet<IpAddr> = self
+            .replies()
+            .iter()
+            .filter(|&r| r.probe_ttl == ttl)
+            .map(|r| r.reply_src_addr)
+            .collect();
+
+        if nodes_at_ttl.is_empty() {
+            println!("No nodes at TTL {}", ttl);
+        }
+
+        let link_dist = self.nodes_distribution_at_ttl(nodes_at_ttl.iter().collect(), ttl);
+
+        let mut unresolved_nodes = HashSet::new();
+        let mut weighted_thresholds = Vec::new();
+
+        for node in &nodes_at_ttl {
+            if node == &self.dst_addr {
+                continue;
+            }
+
+            let successors: HashSet<&IpAddr> = self.links_by_ttl()[&ttl]
+                .iter()
+                .filter(|l| l.near_ip == Some(node) && l.far_ip.is_some())
+                .map(|l| l.far_ip.unwrap())
+                .collect();
+
+            let n_successors = successors.len();
+
+            if n_successors == 0 && node != &self.dst_addr {
+                println!("Node {} has no successors at TTL {}", node, ttl);
+            } else {
+                println!(
+                    "Node {} has {} successors at TTL {}",
+                    node, n_successors, ttl
+                );
+            }
+
+            let n_k = stopping_point(n_successors, self.failure_probability);
+
+            let n_probes = self.links_by_ttl()[&ttl]
+                .iter()
+                .filter(|l| l.near_ip == Some(node) && l.far_ip.is_some())
+                .count();
+
+            if n_successors == 0 || n_probes >= n_k {
+                // node is resolved
+                continue;
+            }
+
+            if n_successors != 0 && n_probes < n_k {
+                // node is unresolved
+                unresolved_nodes.insert(*node);
+                weighted_thresholds.push((n_k as f64 / link_dist[node]) as usize);
+            }
+        }
+
+        let max_weighted_threshold = weighted_thresholds.into_iter().max().unwrap_or(0);
+
+        (unresolved_nodes, max_weighted_threshold)
+    }
+
     pub fn next_round(&mut self, replies: Vec<Reply>) -> Vec<Probe> {
         self.current_round += 1;
         self.replies_by_round.insert(self.current_round, replies);
@@ -149,7 +216,7 @@ impl DiamondMiner {
         println!("links_by_ttl: {:?}", self.links_by_ttl());
         println!("probes_sent: {:?}", self.probes_sent);
 
-        let flows_by_ttl: HashMap<_, _> = if self.current_round == 1 {
+        let flows_by_ttl: HashMap<TTL, Range<usize>> = if self.current_round == 1 {
             println!("First round");
             let max_flow = 1;
             (self.min_ttl..=self.max_ttl)
@@ -168,6 +235,19 @@ impl DiamondMiner {
                 })
                 .collect()
         };
+
+        // the max flow at a given ttl is the max of the max flow at ttl and ttl+1
+
+        let flows_by_ttl: HashMap<_, _> = flows_by_ttl
+            .iter()
+            .map(|(&ttl, flow_range)| {
+                let max_flow = flow_range.end;
+                let previous_ttl = ttl.saturating_sub(1);
+                let previous_max_flow = flows_by_ttl.get(&previous_ttl).unwrap_or(&(0..1)).end;
+                let max_flow = max_flow.max(previous_max_flow);
+                (ttl, flow_range.start..max_flow)
+            })
+            .collect();
 
         println!("current_round: {}", self.current_round);
         println!("Flows by TTL: {:?}", flows_by_ttl);

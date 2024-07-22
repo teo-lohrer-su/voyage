@@ -2,8 +2,9 @@ use std::net::IpAddr;
 
 use caracat::models::{Reply, L4};
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Eq, PartialEq, Hash, Clone, Copy)]
-enum L4Wrapper {
+pub(crate) enum L4Wrapper {
     ICMP,
     ICMPv6,
     UDP,
@@ -40,11 +41,12 @@ impl From<&L4Wrapper> for L4 {
     }
 }
 
-pub(crate) type TTL = u8;
+#[allow(clippy::upper_case_acronyms)]
+pub type TTL = u8;
 pub(crate) type Port = u16;
 
 #[derive(Eq, PartialEq, Hash, Clone, Copy)]
-pub(crate) struct Flow {
+pub struct Flow {
     pub(crate) protocol: L4Wrapper,
     pub(crate) dst_address: IpAddr,
     pub(crate) src_port: Port,
@@ -63,7 +65,7 @@ impl From<&Reply> for Flow {
 }
 
 #[derive(Eq, Hash, PartialEq, Debug)]
-pub(crate) struct Link<'a> {
+pub struct Link<'a> {
     pub(crate) ttl: TTL,
     pub(crate) near_ip: Option<&'a IpAddr>,
     pub(crate) far_ip: Option<&'a IpAddr>,

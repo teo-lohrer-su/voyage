@@ -132,7 +132,7 @@ fn test_probe_generator_23() {
         2
     );
 
-    let expected_addr = vec!["::ffff:0:a".parse(), "::ffff:0:10a".parse()];
+    let expected_addr = ["::ffff:0:a".parse(), "::ffff:0:10a".parse()];
 
     for probe in probes {
         assert!(expected_addr.contains(&Ok(probe.dst_addr)));

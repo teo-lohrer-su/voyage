@@ -5,6 +5,7 @@ use std::{
 
 use caracat::{models::Reply, receiver::Receiver};
 
+#[allow(dead_code)]
 pub struct ReceiveCache {
     handle: JoinHandle<()>,
     stopped: Arc<Mutex<bool>>,
@@ -12,9 +13,7 @@ pub struct ReceiveCache {
 }
 
 impl ReceiveCache {
-    pub fn new(
-        interface: String,
-    ) -> Self {
+    pub fn new(interface: String) -> Self {
         let stopped = Arc::new(Mutex::new(false));
         let stopped_thr = stopped.clone();
         let replies = Arc::new(Mutex::new(Vec::new()));
@@ -42,7 +41,7 @@ impl ReceiveCache {
         }
     }
 
-    pub fn stop(&mut self) -> Vec<Reply>{
+    pub fn stop(&mut self) -> Vec<Reply> {
         *self.stopped.lock().unwrap() = true;
         //  // Wait for the thread to finish
         //  if let Some(handle) = self.handle.take() {

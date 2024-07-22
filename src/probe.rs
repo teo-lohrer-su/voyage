@@ -14,7 +14,7 @@ use caracat::{
 
 use crate::receiver::ReceiveCache;
 
-pub fn probe<'a, T: Iterator<Item = Probe>>(
+pub fn probe<T: Iterator<Item = Probe>>(
     config: Config,
     probes: T,
     // ) -> Result<(SendStatistics, ReceiveStatistics)> {
