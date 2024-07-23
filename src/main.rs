@@ -7,7 +7,7 @@ use caracat::high_level::Config;
 use caracat::models::Reply;
 use itertools::Itertools;
 use voyage::algorithms::diamond_miner::DiamondMiner;
-use voyage::algorithms::utils::stopping_point;
+use voyage::algorithms::utils::{general_prob, stopping_point};
 
 use anyhow::Result;
 use voyage::probe::probe;
@@ -16,10 +16,30 @@ use voyage::types::TTL;
 
 fn main() -> Result<()> {
     println!("Hello, world!");
-    for i in 0..64 {
-        println!("{}", stopping_point(i, 0.01));
+    for i in 1..=10 {
+        println!("{}: {}", i, stopping_point(i, 0.01));
     }
-    println!("Let's go!");
+
+    let triplets = [
+        (4, 3, 2),
+        (2, 2, 1),
+        (2, 2, 2),
+        (3, 2, 1),
+        (3, 2, 2),
+        (3, 2, 3),
+        (3, 3, 1),
+        (3, 3, 2),
+        (3, 3, 3),
+    ];
+    for (K, n, k) in triplets {
+        println!("K:{} n:{} k:{} --> p:{}", K, n, k, general_prob(K, n, k));
+    }
+
+    return Ok(());
+    // println!("Let's go!");
+
+    // println!("32: {} (should be 211)", general_stopping_point(32, 0.05));
+    // return Ok(());
 
     // for total_interfaces in 1..=10
     // for n_probes in 1..=10
@@ -49,9 +69,9 @@ fn main() -> Result<()> {
     // }
 
     // let dst_addr_str = "12.12.12.12";
-    // let dst_addr_str = "103.37.83.226";
+    let dst_addr_str = "103.37.83.226";
     // let dst_addr_str = "8.8.8.8";
-    let dst_addr_str = "1.1.1.1";
+    // let dst_addr_str = "1.1.1.1";
     let dst_addr = IpAddr::from(dst_addr_str.parse::<Ipv4Addr>()?);
     let min_ttl = 0;
     let max_ttl = 64;
@@ -187,9 +207,9 @@ fn main() -> Result<()> {
 
     // for (ttl, table) in ips_by_ttl_by_flow {
     for ttl in sorted_ttls.iter() {
-        let table = ips_by_ttl_by_flow.get(&ttl).unwrap();
+        let table = ips_by_ttl_by_flow.get(ttl).unwrap();
         println!("TTL: {}", ttl);
-        for (i, (flow, replies)) in table.iter().enumerate() {
+        for (i, (_flow, replies)) in table.iter().enumerate() {
             println!("  Flow: {}", i);
             for reply in replies {
                 println!("    {}", reply);

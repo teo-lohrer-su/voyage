@@ -10,7 +10,7 @@ use std::net::IpAddr;
 use std::ops::Range;
 use std::vec;
 
-use crate::algorithms::utils::{general_stopping_point, stopping_point};
+use crate::algorithms::utils::stopping_point;
 use crate::links::get_links_by_ttl;
 use crate::types::{Link, Port, TTL};
 
@@ -164,7 +164,10 @@ impl DiamondMiner {
                 continue;
             }
 
-            let successors: HashSet<&IpAddr> = self.links_by_ttl()[&ttl]
+            let successors: HashSet<&IpAddr> = self
+                .links_by_ttl()
+                .get(&ttl)
+                .unwrap_or(&HashSet::new())
                 .iter()
                 .filter(|l| l.near_ip == Some(node) && l.far_ip.is_some())
                 .map(|l| l.far_ip.unwrap())
@@ -183,7 +186,10 @@ impl DiamondMiner {
 
             let n_k = stopping_point(n_successors, self.failure_probability);
 
-            let n_probes = self.links_by_ttl()[&ttl]
+            let n_probes = self
+                .links_by_ttl()
+                .get(&ttl)
+                .unwrap_or(&HashSet::new())
                 .iter()
                 .filter(|l| l.near_ip == Some(node) && l.far_ip.is_some())
                 .count();
@@ -202,6 +208,15 @@ impl DiamondMiner {
 
         let max_weighted_threshold = weighted_thresholds.into_iter().max().unwrap_or(0);
 
+        if max_weighted_threshold == 0 && !unresolved_nodes.is_empty() {
+            println!("!!!!!!!!!!!!!!!!!!!!");
+            println!("!!!!!!!!!!!!!!!!!!!!");
+            println!("{} unresolved nodes at TTL {}", unresolved_nodes.len(), ttl);
+            println!("but max_weighted_threshold is 0");
+            println!("!!!!!!!!!!!!!!!!!!!!");
+            println!("!!!!!!!!!!!!!!!!!!!!");
+        }
+
         (unresolved_nodes, max_weighted_threshold)
     }
 
@@ -216,36 +231,35 @@ impl DiamondMiner {
         println!("links_by_ttl: {:?}", self.links_by_ttl());
         println!("probes_sent: {:?}", self.probes_sent);
 
-        let flows_by_ttl: HashMap<TTL, Range<usize>> = if self.current_round == 1 {
-            println!("First round");
-            let max_flow = 1;
-            (self.min_ttl..=self.max_ttl)
-                .map(|ttl| (ttl, 0..max_flow))
-                .collect()
+        let mut max_flows_by_ttl = HashMap::new();
+
+        if self.current_round == 1 {
+            let max_flow = stopping_point(1, self.failure_probability);
+            for ttl in self.min_ttl..=self.max_ttl {
+                max_flows_by_ttl.insert(ttl, max_flow);
+            }
         } else {
-            self.links_by_ttl()
-                .iter()
-                .map(|(ttl, links)| {
-                    // let max_flow = stopping_point(links.len(), self.failure_probability);
-                    let max_flow =
-                        general_stopping_point(links.len() + 1, self.failure_probability);
-                    println!("TTL: {}, max_flow: {}", ttl, max_flow);
-                    let start_flow = *self.probes_sent.get(ttl).unwrap_or(&0);
-                    (*ttl, start_flow..max_flow)
-                })
-                .collect()
-        };
+            for ttl in self.min_ttl..=self.max_ttl {
+                let (unresolved_nodes, max_flow) = self.unresolved_nodes_at_ttl(ttl);
+                // let max_flow = self.unresolved_nodes_at_ttl(ttl).1;
+                println!("Unresolved nodes at TTL {}: {:?}", ttl, unresolved_nodes);
+                max_flows_by_ttl.insert(ttl, max_flow);
+            }
+        }
 
-        // the max flow at a given ttl is the max of the max flow at ttl and ttl+1
-
-        let flows_by_ttl: HashMap<_, _> = flows_by_ttl
+        let flows_by_ttl: HashMap<TTL, Range<usize>> = max_flows_by_ttl
             .iter()
-            .map(|(&ttl, flow_range)| {
-                let max_flow = flow_range.end;
-                let previous_ttl = ttl.saturating_sub(1);
-                let previous_max_flow = flows_by_ttl.get(&previous_ttl).unwrap_or(&(0..1)).end;
-                let max_flow = max_flow.max(previous_max_flow);
-                (ttl, flow_range.start..max_flow)
+            .map(|(&ttl, &max_flow)| {
+                let combined_max_flow = if ttl < self.min_ttl || ttl > self.max_ttl {
+                    1
+                } else {
+                    let previous_max =
+                        *max_flows_by_ttl.get(&(ttl.saturating_sub(1))).unwrap_or(&1);
+                    let next_max = *max_flows_by_ttl.get(&(ttl + 1)).unwrap_or(&1);
+                    previous_max.max(max_flow).max(next_max)
+                };
+                let sent_probes = *self.probes_sent.get(&ttl).unwrap_or(&0);
+                (ttl, sent_probes..combined_max_flow)
             })
             .collect();
 

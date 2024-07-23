@@ -110,3 +110,68 @@ pub(crate) fn get_links_by_ttl(replies: Vec<&Reply>) -> HashMap<TTL, HashSet<Lin
 
     links_by_ttl
 }
+
+#[cfg(test)]
+mod tests {
+    use std::net::{IpAddr, Ipv4Addr};
+
+    use super::*;
+
+    #[test]
+    fn test_get_replies_by_ttl() {
+        let src_addr_str_1 = "192.168.0.2";
+        let src_addr_str_2 = "192.168.0.3";
+        let src_addr_1 = IpAddr::from(src_addr_str_1.parse::<Ipv4Addr>().unwrap());
+        let src_addr_2 = IpAddr::from(src_addr_str_2.parse::<Ipv4Addr>().unwrap());
+
+        let replies: Vec<Reply> = vec![
+            Reply {
+                probe_ttl: 1,
+                reply_src_addr: src_addr_1,
+                ..Default::default()
+            },
+            Reply {
+                probe_ttl: 2,
+                reply_src_addr: src_addr_1,
+                ..Default::default()
+            },
+            Reply {
+                probe_ttl: 1,
+                reply_src_addr: src_addr_2,
+                ..Default::default()
+            },
+            Reply {
+                probe_ttl: 3,
+                reply_src_addr: src_addr_1,
+                ..Default::default()
+            },
+            Reply {
+                probe_ttl: 2,
+                reply_src_addr: src_addr_2,
+                ..Default::default()
+            },
+        ];
+
+        let expected: HashMap<TTL, Vec<&Reply>> = [
+            (1, vec![&replies[0], &replies[2]]),
+            (2, vec![&replies[1], &replies[4]]),
+            (3, vec![&replies[3]]),
+        ]
+        .into_iter()
+        .collect();
+
+        let result = get_replies_by_ttl(replies.iter().collect());
+
+        for (ttl, replies) in expected {
+            assert_eq!(result.get(&ttl).unwrap().len(), replies.len());
+            for reply in replies {
+                assert!(result.get(&ttl).unwrap().iter().any(|r| {
+                    r.probe_ttl == reply.probe_ttl
+                        && r.reply_src_addr == reply.reply_src_addr
+                        && r.reply_dst_addr == reply.reply_dst_addr
+                        && r.reply_protocol == reply.reply_protocol
+                }));
+            }
+        }
+    }
+}
