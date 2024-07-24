@@ -74,11 +74,11 @@ impl DiamondMiner {
     }
 
     pub fn links_by_ttl(&self) -> HashMap<TTL, HashSet<Link>> {
-        get_links_by_ttl(self.time_exceeded_replies())
+        get_links_by_ttl(&self.time_exceeded_replies()[..])
     }
 
     pub fn n_links_by_ttl(&self) -> HashMap<TTL, usize> {
-        get_links_by_ttl(self.time_exceeded_replies())
+        get_links_by_ttl(&self.time_exceeded_replies()[..])
             .iter()
             .map(|(&k, v)| (k, v.len()))
             .collect()
@@ -241,7 +241,6 @@ impl DiamondMiner {
         } else {
             for ttl in self.min_ttl..=self.max_ttl {
                 let (unresolved_nodes, max_flow) = self.unresolved_nodes_at_ttl(ttl);
-                // let max_flow = self.unresolved_nodes_at_ttl(ttl).1;
                 println!("Unresolved nodes at TTL {}: {:?}", ttl, unresolved_nodes);
                 max_flows_by_ttl.insert(ttl, max_flow);
             }
