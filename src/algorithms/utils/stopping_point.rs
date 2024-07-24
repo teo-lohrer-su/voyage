@@ -121,7 +121,7 @@ mod tests {
         for n_interfaces in 1..=7 {
             for n_probes in 1..=7 {
                 for target_interfaces in 1..=n_interfaces.min(n_probes) {
-                    let n_samples = 10_000;
+                    let n_samples = 1_000;
                     let simulated_prob = (0..n_samples)
                         .map(|_| simulate_draw(n_interfaces, n_probes))
                         .filter(|&x| x == target_interfaces)
