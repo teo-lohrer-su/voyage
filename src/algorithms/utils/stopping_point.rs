@@ -10,13 +10,14 @@ type Probability = f64;
 const MAX_N_PROBES: usize = 722;
 const MAX_N_INTERFACES: usize = 1024;
 
+pub const LIKELIHOOD_THRESHOLD: Probability = 0.95;
+
 // using a Lazy to avoid recomputing the table every time
 // Stirling_2 ratios are defined as the S(n, k) / (k^n * k!)
 // see the link above for more details
 // the table at index n contains the probabilities of finding k interfaces after n probes
 static STIRLING2_RATIOS: Lazy<Vec<Vec<Probability>>> = Lazy::new(|| {
     let ratios = stirling2_ratio_table::<Probability>(MAX_N_PROBES);
-    println!("ratios: {:?}", ratios.iter().take(10).collect::<Vec<_>>());
     ratios
 });
 
@@ -72,7 +73,10 @@ pub fn estimate_total_interfaces(
     likelihood_threshold: Probability,
 ) -> usize {
     if n_probes < observed_interfaces {
-        panic!("observed_interfaces must be less than or equal to n_probes");
+        panic!(
+            "observed_interfaces must be less than or equal to n_probes. {} < {}",
+            n_probes, observed_interfaces
+        );
     }
 
     if n_probes == observed_interfaces {
@@ -85,7 +89,7 @@ pub fn estimate_total_interfaces(
     }
     let mut prev_prob = 0.0;
 
-    for total_interfaces in (observed_interfaces - 1)..=MAX_N_INTERFACES {
+    for total_interfaces in observed_interfaces..=MAX_N_INTERFACES {
         let prob = event_prob(total_interfaces, n_probes, observed_interfaces);
         if prob > likelihood_threshold {
             return total_interfaces;
@@ -100,6 +104,8 @@ pub fn estimate_total_interfaces(
 
 #[cfg(test)]
 mod tests {
+
+    use std::result;
 
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha8Rng;
@@ -179,6 +185,58 @@ mod tests {
                     );
                 }
             }
+        }
+    }
+
+    #[test]
+    fn estimate_total_interfaces_range() {
+        // (n_probes, observed_interfaces, estimate)
+        let expected = [
+            (2, 1, 1),
+            (3, 1, 1),
+            (3, 2, 2),
+            (4, 1, 1),
+            (4, 2, 2),
+            (4, 3, 5),
+            (5, 1, 1),
+            (5, 2, 2),
+            (5, 3, 3),
+            (5, 4, 8),
+            (6, 1, 1),
+            (6, 2, 2),
+            (6, 3, 3),
+            (6, 4, 6),
+            (6, 5, 13),
+            (7, 1, 1),
+            (7, 2, 2),
+            (7, 3, 3),
+            (7, 4, 5),
+            (7, 5, 8),
+            (7, 6, 19),
+            (8, 1, 1),
+            (8, 2, 2),
+            (8, 3, 3),
+            (8, 4, 4),
+            (8, 5, 7),
+            (8, 6, 11),
+            (8, 7, 25),
+            (9, 1, 1),
+            (9, 2, 2),
+            (9, 3, 3),
+            (9, 4, 4),
+            (9, 5, 6),
+            (9, 6, 9),
+            (9, 7, 15),
+            (9, 8, 33),
+        ];
+        for (n_probes, observed_interfaces, estimate) in expected.iter() {
+            let result =
+                estimate_total_interfaces(*n_probes, *observed_interfaces, LIKELIHOOD_THRESHOLD);
+            assert_eq!(
+                result, *estimate,
+                "n_probes: {} observed_interfaces: {}, expected: {}, got {}",
+                n_probes, observed_interfaces, estimate, result,
+            );
         }
     }
 }

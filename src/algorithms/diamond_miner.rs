@@ -14,6 +14,8 @@ use crate::algorithms::utils::stopping_point;
 use crate::links::get_links_by_ttl;
 use crate::types::{Link, Port, TTL};
 
+use super::utils::{estimate_total_interfaces, LIKELIHOOD_THRESHOLD};
+
 pub struct DiamondMiner {
     // Configuration parameters dst_addr: IpAddr,
     dst_addr: IpAddr,
@@ -247,7 +249,10 @@ impl DiamondMiner {
             if n_probes < n_k {
                 // node is unresolved
                 unresolved_nodes.insert(node);
-                weighted_thresholds.push((n_k as f64 / link_dist[&node]) as usize);
+                let estimate = estimate_total_interfaces(n_k, n_probes, LIKELIHOOD_THRESHOLD);
+                let optimal_n_k = stopping_point(estimate, self.failure_probability);
+                // weighted_thresholds.push((n_k as f64 / link_dist[&node]) as usize);
+                weighted_thresholds.push((n_k.max(optimal_n_k) as f64 / link_dist[&node]) as usize);
                 // println!(
                 //     "Node {} at TTL {} is unresolved with n_k = {} and n_probes = {}, and weighted threshold = {}",
                 //     node, ttl, n_k, n_probes, (n_k as f64 / link_dist[&node]) as usize
