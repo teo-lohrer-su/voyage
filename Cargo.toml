@@ -12,6 +12,7 @@ caracat = { git = "https://github.com/maxmouchet/caracat", branch = "main" }
 ip_network = "0.4.1"
 itertools = "0.12.0"
 log = "0.4.21"
+netdev = "0.30.0"
 once_cell = "1.19.0"
 pantrace = "0.6.2"
 pnet = "0.34.0"

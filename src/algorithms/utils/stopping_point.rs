@@ -8,6 +8,7 @@ type Probability = f64;
 
 // see https://github.com/10XGenomics/rust-toolbox/blob/6856c585a918e183fc4b3bd902b9e4f22e1f3d5f/stirling_numbers/src/lib.rs#L98
 const MAX_N_PROBES: usize = 722;
+const MAX_N_INTERFACES: usize = 1024;
 
 // using a Lazy to avoid recomputing the table every time
 // Stirling_2 ratios are defined as the S(n, k) / (k^n * k!)
@@ -39,25 +40,62 @@ fn binomial(n: usize, k: usize) -> Probability {
     })
 }
 
-pub fn general_prob(n_interfaces: usize, n_probes: usize, target_interfaces: usize) -> Probability {
-    if n_interfaces < target_interfaces {
-        panic!("target_interfaces must be less than or equal to n_interfaces");
+pub fn event_prob(
+    total_interfaces: usize,
+    n_probes: usize,
+    observed_interfaces: usize,
+) -> Probability {
+    // the probability of finding exactly observed_interfaces interfaces after n_probes given total_interfaces
+    if total_interfaces < observed_interfaces {
+        panic!("observed_interfaces must be less than or equal to total_interfaces");
     }
-    if n_probes < target_interfaces {
+    if n_probes < observed_interfaces {
         return 0.0;
     }
     // SR * k^n / K^n
     // SR * (k / K)^n
     // then multiply by the number of ways to choose k interfaces from n_interfaces
 
-    let k_ratio = target_interfaces as Probability / n_interfaces as Probability;
-    let mut current_ratio = STIRLING2_RATIOS[n_probes][target_interfaces];
+    let k_ratio = observed_interfaces as Probability / total_interfaces as Probability;
+    let mut current_ratio = STIRLING2_RATIOS[n_probes][observed_interfaces];
     for _ in 0..n_probes {
         current_ratio *= k_ratio;
     }
     // mult by binomial coefficient
-    let binom = binomial(n_interfaces, target_interfaces);
+    let binom = binomial(total_interfaces, observed_interfaces);
     current_ratio * binom
+}
+
+pub fn estimate_total_interfaces(
+    n_probes: usize,
+    observed_interfaces: usize,
+    likelihood_threshold: Probability,
+) -> usize {
+    if n_probes < observed_interfaces {
+        panic!("observed_interfaces must be less than or equal to n_probes");
+    }
+
+    if n_probes == observed_interfaces {
+        for total_interfaces in observed_interfaces..=MAX_N_INTERFACES {
+            if event_prob(total_interfaces, n_probes, observed_interfaces) > likelihood_threshold {
+                return total_interfaces;
+            }
+        }
+        return observed_interfaces;
+    }
+    let mut prev_prob = 0.0;
+
+    for total_interfaces in (observed_interfaces - 1)..=MAX_N_INTERFACES {
+        let prob = event_prob(total_interfaces, n_probes, observed_interfaces);
+        if prob > likelihood_threshold {
+            return total_interfaces;
+        }
+        if prob < prev_prob {
+            return total_interfaces - 1;
+        }
+        prev_prob = prob;
+    }
+    observed_interfaces
 }
 
 #[cfg(test)]
@@ -128,7 +166,7 @@ mod tests {
                         .filter(|&x| x == target_interfaces)
                         .count() as f64
                         / n_samples as f64;
-                    let computed_prob = general_prob(n_interfaces, n_probes, target_interfaces);
+                    let computed_prob = event_prob(n_interfaces, n_probes, target_interfaces);
                     let diff = (simulated_prob - computed_prob).abs();
                     assert!(
                         diff <= 0.05,

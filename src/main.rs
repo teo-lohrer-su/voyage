@@ -6,6 +6,7 @@ use caracat::high_level::Config;
 
 // use caracat::models::Reply;
 use itertools::Itertools;
+use netdev::get_default_interface;
 use voyage::algorithms::diamond_miner::DiamondMiner;
 // use voyage::algorithms::utils::{general_prob, stopping_point};
 
@@ -101,7 +102,7 @@ fn main() -> Result<()> {
 
         let config = Config {
             receiver_wait_time: std::time::Duration::from_secs(2),
-            interface: String::from("en7"),
+            interface: get_default_interface().unwrap().name,
             ..Config::default()
         };
         round += 1;
