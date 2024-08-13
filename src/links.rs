@@ -7,8 +7,6 @@ use crate::types::{Flow, Link, ReplyPair, TTL};
 
 use std::collections::HashSet;
 
-// pub(crate) fn get_replies_by_ttl(replies: Vec<&Reply>) -> HashMap<TTL, Vec<&Reply>> {
-// pub(crate) fn get_replies_by_ttl<'a>(replies: &[&'a Reply]) -> HashMap<TTL, Vec<&'a Reply>> {
 pub(crate) fn get_replies_by_ttl<'a>(replies: &[&'a Reply]) -> HashMap<TTL, Vec<&'a Reply>> {
     replies.iter().fold(HashMap::new(), |mut acc, r| {
         acc.entry(r.probe_ttl).or_default().push(r);
@@ -24,18 +22,32 @@ pub(crate) fn get_replies_by_flow<'a>(replies: &[&'a Reply]) -> HashMap<Flow, Ve
 }
 
 fn get_pairs_by_flow<'a>(replies: &[&'a Reply]) -> HashMap<Flow, Vec<ReplyPair<'a>>> {
-    // fn get_pairs_by_flow<'a>(replies: Vec<&'a Reply>) -> HashMap<Flow, Vec<ReplyPair<'a>>> {
+    if replies.is_empty() {
+        return HashMap::new();
+    }
+    let (min_ttl, max_ttl) = (
+        replies.iter().map(|r| r.probe_ttl).min().unwrap(),
+        replies.iter().map(|r| r.probe_ttl).max().unwrap(),
+    );
+    // println!("min_ttl: {}, max_ttl: {}", min_ttl, max_ttl);
     let mut pairs_by_flow: HashMap<Flow, Vec<ReplyPair>> = HashMap::new();
 
     let replies_by_flow = get_replies_by_flow(replies);
 
     for (flow, flow_replies) in replies_by_flow {
+        // for this flow, group replies by ttl
+        // note that there may be missing ttl values
+        // also note that there should be at most one reply per ttl (we are in a fixed flow)
         let ttl_replies = get_replies_by_ttl(flow_replies.as_slice());
 
-        let (min_ttl, max_ttl) = (
-            *ttl_replies.keys().min().unwrap(),
-            *ttl_replies.keys().max().unwrap(),
-        );
+        // maybe compute the min and max ttl over ALL flows?
+        // let (min_ttl, max_ttl) = (
+        //     *ttl_replies.keys().min().unwrap(),
+        //     *ttl_replies.keys().max().unwrap(),
+        // );
+        // println!("min_ttl: {}, max_ttl: {}", min_ttl, max_ttl);
+
+        // for each ttl (we consider the ttl to be the one for the near reply)
         for near_ttl in min_ttl..=max_ttl {
             let fetch_replies = |ttl| {
                 ttl_replies
@@ -43,9 +55,13 @@ fn get_pairs_by_flow<'a>(replies: &[&'a Reply]) -> HashMap<Flow, Vec<ReplyPair<'
                     .map(|replies| replies.iter().map(|&reply| Some(reply)).collect::<Vec<_>>())
                     .unwrap_or(vec![None])
             };
+            // we fetch replies that match the ttl (and the flow)
             let near_replies = fetch_replies(near_ttl);
+            // we fetch replies that match the ttl + 1 (and the flow)
             let far_replies = fetch_replies(near_ttl + 1);
+            // since they share the same flow, and are one hop away, we conclude there is a link
             iproduct!(near_replies, far_replies).for_each(|replies| {
+                // we only consider pairs where at least one reply is present
                 if replies.0.is_some() || replies.1.is_some() {
                     let pair = ReplyPair {
                         ttl: near_ttl,
@@ -60,53 +76,26 @@ fn get_pairs_by_flow<'a>(replies: &[&'a Reply]) -> HashMap<Flow, Vec<ReplyPair<'
     pairs_by_flow
 }
 
-pub(crate) fn _get_pairs_by_flow<'a>(replies: &[&'a Reply]) -> HashMap<Flow, Vec<ReplyPair<'a>>> {
-    let mut pairs_by_flow: HashMap<Flow, Vec<ReplyPair>> = HashMap::new();
-
-    let replies_by_flow = get_replies_by_flow(replies);
-
-    for (flow, flow_replies) in replies_by_flow {
-        let replies_by_ttl = get_replies_by_ttl(&flow_replies[..]);
-        let (min_ttl, max_ttl) = (
-            *replies_by_ttl.keys().min().unwrap(),
-            *replies_by_ttl.keys().max().unwrap(),
-        );
-
-        for near_ttl in min_ttl..=max_ttl {
-            let fetch_replies = |ttl| {
-                replies_by_ttl
-                    .get(&ttl)
-                    .map(|replies| replies.iter().map(|&reply| Some(reply)).collect::<Vec<_>>())
-                    .unwrap_or(vec![None])
-            };
-            let near_replies = fetch_replies(near_ttl);
-            let far_replies = fetch_replies(near_ttl + 1);
-            iproduct!(near_replies, far_replies).for_each(|replies| {
-                let pair = ReplyPair {
-                    ttl: near_ttl,
-                    first_reply: replies.0,
-                    second_reply: replies.1,
-                };
-                pairs_by_flow.entry(flow).or_default().push(pair);
-            })
-        }
-    }
-    pairs_by_flow
-}
-
-pub(crate) fn get_links_by_ttl<'a>(replies: &[&'a Reply]) -> HashMap<TTL, HashSet<Link<'a>>> {
-    let mut links_by_ttl: HashMap<u8, HashSet<Link>> = HashMap::new();
+// pub(crate) fn get_links_by_ttl(replies: &[&Reply]) -> HashMap<TTL, HashSet<Link>> {
+pub(crate) fn get_links_by_ttl(replies: &[&Reply]) -> HashMap<TTL, Vec<Link>> {
+    // links are simply ReplyPairs with the near and far IPs
+    // let mut links_by_ttl: HashMap<u8, HashSet<Link>> = HashMap::new();
+    let mut links_by_ttl: HashMap<u8, Vec<Link>> = HashMap::new();
     let pairs_by_flow = get_pairs_by_flow(replies);
+
+    // println!("pairs_by_flow: {:?}", pairs_by_flow);
+    // println!("replies: {:?}", replies);
 
     for (_, pairs) in pairs_by_flow {
         for pair in pairs {
             let link = Link {
                 ttl: pair.ttl,
-                near_ip: pair.first_reply.map(|r| &r.reply_src_addr),
-                far_ip: pair.second_reply.map(|r| &r.reply_src_addr),
+                near_ip: pair.first_reply.map(|r| r.reply_src_addr),
+                far_ip: pair.second_reply.map(|r| r.reply_src_addr),
             };
 
-            links_by_ttl.entry(pair.ttl).or_default().insert(link);
+            // links_by_ttl.entry(pair.ttl).or_default().insert(link);
+            links_by_ttl.entry(pair.ttl).or_default().push(link);
         }
     }
 
@@ -115,11 +104,12 @@ pub(crate) fn get_links_by_ttl<'a>(replies: &[&'a Reply]) -> HashMap<TTL, HashSe
 
 #[cfg(test)]
 mod tests {
-    use std::net::{IpAddr, Ipv4Addr};
 
     use super::*;
+    use crate::helpers::{format_reply_pair, replies_eq, reply, reply_pair_eq};
+    use std::iter::repeat;
 
-    const IPS: [&str; 10] = [
+    const IP: [&str; 10] = [
         "192.168.0.2",
         "192.168.0.3",
         "192.168.0.4",
@@ -132,55 +122,14 @@ mod tests {
         "192.168.0.11",
     ];
 
-    // since Reply does not implement PartialEq, we need to compare the fields manually
-    fn reply_eq(r1: &Reply, r2: &Reply) -> bool {
-        r1.probe_ttl == r2.probe_ttl
-            && r1.reply_src_addr == r2.reply_src_addr
-            && r1.reply_dst_addr == r2.reply_dst_addr
-            && r1.reply_protocol == r2.reply_protocol
-        // && r1.to_string() == r2.to_string()
-    }
-
-    fn replies_eq(replies1: &[&Reply], replies2: &[&Reply]) -> bool {
-        // order insensitive
-        replies1.len() == replies2.len()
-            && replies1
-                .iter()
-                .all(|r1| replies2.iter().any(|r2| reply_eq(r1, r2)))
-    }
-
-    fn reply_pair_eq(pair1: &ReplyPair, pair2: &ReplyPair) -> bool {
-        pair1.ttl == pair2.ttl
-            && match (pair1.first_reply, pair2.first_reply) {
-                (None, None) => true,
-                (Some(r1), Some(r2)) => reply_eq(r1, r2),
-                _ => false,
-            }
-            && match (pair1.second_reply, pair2.second_reply) {
-                (None, None) => true,
-                (Some(r1), Some(r2)) => reply_eq(r1, r2),
-                _ => false,
-            }
-    }
-
-    fn reply(probe_ttl: u8, reply_src_addr: &str, probe_dst_addr: &str) -> Reply {
-        Reply {
-            probe_ttl,
-            reply_src_addr: IpAddr::from(reply_src_addr.parse::<Ipv4Addr>().unwrap()),
-            probe_dst_addr: IpAddr::from(probe_dst_addr.parse::<Ipv4Addr>().unwrap()),
-            probe_protocol: 1,
-            ..Default::default()
-        }
-    }
-
     #[test]
     fn test_get_replies_by_ttl() {
         let replies: Vec<Reply> = vec![
-            reply(1, IPS[0], IPS[9]),
-            reply(2, IPS[1], IPS[9]),
-            reply(1, IPS[2], IPS[9]),
-            reply(3, IPS[3], IPS[9]),
-            reply(2, IPS[4], IPS[9]),
+            reply(1, IP[0], IP[9]),
+            reply(2, IP[1], IP[9]),
+            reply(1, IP[2], IP[9]),
+            reply(3, IP[3], IP[9]),
+            reply(2, IP[4], IP[9]),
         ];
 
         let expected: HashMap<TTL, Vec<&Reply>> = [
@@ -193,7 +142,7 @@ mod tests {
 
         let replies_refs: Vec<&Reply> = replies.iter().collect();
 
-        let result = get_replies_by_ttl(&replies_refs[..]);
+        let result = get_replies_by_ttl(&replies_refs);
 
         assert_eq!(expected.len(), result.len());
         for (ttl, replies) in expected {
@@ -205,11 +154,11 @@ mod tests {
     #[test]
     fn test_get_replies_by_flow() {
         let replies: Vec<Reply> = vec![
-            reply(1, IPS[0], IPS[9]),
-            reply(2, IPS[1], IPS[8]),
-            reply(1, IPS[2], IPS[9]),
-            reply(3, IPS[3], IPS[8]),
-            reply(2, IPS[4], IPS[9]),
+            reply(1, IP[0], IP[9]),
+            reply(2, IP[1], IP[8]),
+            reply(1, IP[2], IP[9]),
+            reply(3, IP[3], IP[8]),
+            reply(2, IP[4], IP[9]),
         ];
 
         let flow_1 = Flow::from(&replies[0]);
@@ -224,7 +173,7 @@ mod tests {
 
         let replies_refs: Vec<&Reply> = replies.iter().collect();
 
-        let result = get_replies_by_flow(&replies_refs[..]);
+        let result = get_replies_by_flow(&replies_refs);
 
         assert_eq!(expected.len(), result.len());
         for (flow, replies) in expected {
@@ -237,11 +186,11 @@ mod tests {
     fn test_get_pairs_by_flow() {
         // 0-4, 2-4, 1-3
         let replies: Vec<Reply> = vec![
-            reply(1, IPS[0], IPS[9]),
-            reply(2, IPS[1], IPS[8]),
-            reply(1, IPS[2], IPS[9]),
-            reply(3, IPS[3], IPS[8]),
-            reply(2, IPS[4], IPS[9]),
+            reply(1, IP[0], IP[9]),
+            reply(2, IP[1], IP[8]),
+            reply(1, IP[2], IP[9]),
+            reply(3, IP[3], IP[8]),
+            reply(2, IP[4], IP[9]),
         ];
 
         let flow_1 = Flow::from(&replies[0]);
@@ -272,6 +221,11 @@ mod tests {
                 flow_2,
                 vec![
                     ReplyPair {
+                        ttl: 1,
+                        first_reply: None,
+                        second_reply: Some(&replies[1]),
+                    },
+                    ReplyPair {
                         ttl: 2,
                         first_reply: Some(&replies[1]),
                         second_reply: Some(&replies[3]),
@@ -289,7 +243,7 @@ mod tests {
 
         let replies_refs: Vec<&Reply> = replies.iter().collect();
 
-        let result = get_pairs_by_flow(&replies_refs[..]);
+        let result = get_pairs_by_flow(&replies_refs);
 
         assert_eq!(expected.len(), result.len());
         for (flow, pairs) in expected {
@@ -297,17 +251,31 @@ mod tests {
             assert_eq!(
                 pairs.len(),
                 result[&flow].len(),
-                "flow: {:?}, \npairs: {:?} \nresult_pairs: {:?}",
+                "flow: {:?}, \npairs: {} \nresult_pairs: {}",
                 flow,
-                pairs,
+                pairs
+                    .iter()
+                    .map(format_reply_pair)
+                    .collect::<Vec<_>>()
+                    .iter()
+                    .zip(repeat("\n"))
+                    .map(|(a, b)| a.to_owned() + b)
+                    .collect::<String>(),
                 result[&flow]
+                    .iter()
+                    .map(format_reply_pair)
+                    .collect::<Vec<_>>()
+                    .iter()
+                    .zip(repeat(&"\n".to_owned()))
+                    .map(|(a, b)| a.to_owned() + b)
+                    .collect::<String>()
             );
             for pair in pairs {
                 assert!(
                     result[&flow].iter().any(|p| { reply_pair_eq(&pair, p) }),
                     "pair not found: {:?}\n\nresult_pairs: {:?}",
-                    pair,
-                    result[&flow]
+                    format_reply_pair(&pair),
+                    result[&flow].iter().map(format_reply_pair)
                 );
             }
         }

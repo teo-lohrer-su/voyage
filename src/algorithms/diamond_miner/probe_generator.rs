@@ -19,7 +19,7 @@ struct Prefix<'a> {
     protocol: L4,
 }
 
-struct ProbeGenerator<'a> {
+pub struct ProbeGenerator<'a> {
     prefixes: Vec<Prefix<'a>>,
     flow_ids: Vec<u32>,
     ttls: Vec<u8>,

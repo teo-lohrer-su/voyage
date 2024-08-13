@@ -1119,6 +1119,7 @@ dependencies = [
  "pantrace",
  "pnet 0.34.0",
  "rand",
+ "rand_chacha",
  "serde",
  "stirling_numbers",
 ]

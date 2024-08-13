@@ -63,7 +63,8 @@ pub fn general_prob(n_interfaces: usize, n_probes: usize, target_interfaces: usi
 #[cfg(test)]
 mod tests {
 
-    use rand::Rng;
+    use rand::{Rng, SeedableRng};
+    use rand_chacha::ChaCha8Rng;
 
     use super::*;
 
@@ -103,8 +104,7 @@ mod tests {
         )
     }
 
-    fn simulate_draw(n_interfaces: usize, n_probes: usize) -> usize {
-        let mut rng = rand::thread_rng();
+    fn simulate_draw(rng: &mut ChaCha8Rng, n_interfaces: usize, n_probes: usize) -> usize {
         // compute the size of the distinct values set
         // after n_probes samples with replacement
         // from a uniform distribution of n_interfaces values
@@ -118,12 +118,13 @@ mod tests {
 
     #[test]
     fn general_prob_simulation() {
+        let mut rng = ChaCha8Rng::seed_from_u64(42);
         for n_interfaces in 1..=7 {
             for n_probes in 1..=7 {
                 for target_interfaces in 1..=n_interfaces.min(n_probes) {
                     let n_samples = 1_000;
                     let simulated_prob = (0..n_samples)
-                        .map(|_| simulate_draw(n_interfaces, n_probes))
+                        .map(|_| simulate_draw(&mut rng, n_interfaces, n_probes))
                         .filter(|&x| x == target_interfaces)
                         .count() as f64
                         / n_samples as f64;

@@ -65,14 +65,14 @@ impl From<&Reply> for Flow {
 }
 
 #[derive(Eq, Hash, PartialEq, Debug)]
-pub struct Link<'a> {
-    pub(crate) ttl: TTL,
-    pub(crate) near_ip: Option<&'a IpAddr>,
-    pub(crate) far_ip: Option<&'a IpAddr>,
+pub struct Link {
+    pub ttl: TTL,
+    pub near_ip: Option<IpAddr>,
+    pub far_ip: Option<IpAddr>,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct ReplyPair<'a> {
+pub struct ReplyPair<'a> {
     pub(crate) ttl: TTL,
     pub(crate) first_reply: Option<&'a Reply>,
     pub(crate) second_reply: Option<&'a Reply>,
