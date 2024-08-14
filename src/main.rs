@@ -88,7 +88,7 @@ fn main() -> Result<()> {
         dst_addr, min_ttl, max_ttl, src_port, dst_port, protocol, confidence, max_round,
     );
 
-    let mut probes = alg.next_round(vec![]);
+    let mut probes = alg.next_round(vec![], false);
     println!("sending {} probes", probes.len());
 
     let mut round = 0;
@@ -114,7 +114,7 @@ fn main() -> Result<()> {
             replies.iter().filter(|r| r.is_time_exceeded()).count()
         );
 
-        probes = alg.next_round(replies);
+        probes = alg.next_round(replies, false);
         println!("sending {} probes", probes.len());
     }
 
