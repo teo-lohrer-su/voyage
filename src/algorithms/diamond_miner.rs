@@ -291,9 +291,9 @@ impl DiamondMiner {
             }
         } else {
             for ttl in self.min_ttl..=self.max_ttl {
-                let (unresolved_nodes, max_flow) =
+                let (_unresolved_nodes, max_flow) =
                     self.unresolved_nodes_at_ttl(ttl, estimate_successors);
-                // println!("Unresolved nodes at TTL {}: {:?}", ttl, unresolved_nodes);
+                // println!("Unresolved nodes at TTL {}: {:?}", ttl, _unresolved_nodes);
                 max_flows_by_ttl.insert(ttl, max_flow);
             }
         }

@@ -16,10 +16,8 @@ pub const LIKELIHOOD_THRESHOLD: Probability = 0.95;
 // Stirling_2 ratios are defined as the S(n, k) / (k^n * k!)
 // see the link above for more details
 // the table at index n contains the probabilities of finding k interfaces after n probes
-static STIRLING2_RATIOS: Lazy<Vec<Vec<Probability>>> = Lazy::new(|| {
-    let ratios = stirling2_ratio_table::<Probability>(MAX_N_PROBES);
-    ratios
-});
+static STIRLING2_RATIOS: Lazy<Vec<Vec<Probability>>> =
+    Lazy::new(|| stirling2_ratio_table::<Probability>(MAX_N_PROBES));
 
 pub fn stopping_point(n_interfaces: usize, failure_probability: f64) -> usize {
     // the stopping point is defined as the smallest number of probes such that
