@@ -1,4 +1,4 @@
-use caracat::models::{Probe, Reply};
+use caracat::models::Reply;
 use chrono::DateTime;
 use itertools::Itertools;
 use pantrace::formats::internal::{

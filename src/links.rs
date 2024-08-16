@@ -5,8 +5,6 @@ use itertools::iproduct;
 
 use crate::types::{Flow, Link, ReplyPair, TTL};
 
-use std::collections::HashSet;
-
 pub(crate) fn get_replies_by_ttl<'a>(replies: &[&'a Reply]) -> HashMap<TTL, Vec<&'a Reply>> {
     replies.iter().fold(HashMap::new(), |mut acc, r| {
         acc.entry(r.probe_ttl).or_default().push(r);
