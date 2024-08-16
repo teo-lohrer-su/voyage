@@ -6,7 +6,6 @@ use std::vec;
 use caracat::high_level::Config;
 
 use chrono::Utc;
-use itertools::Itertools;
 use netdev::get_default_interface;
 use pantrace::formats::atlas::AtlasWriter;
 use pantrace::formats::internal::{Protocol, Traceroute};
