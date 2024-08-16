@@ -75,7 +75,6 @@ impl DiamondMiner {
 
     pub fn links_by_ttl(&self) -> HashMap<TTL, Vec<Link>> {
         get_links_by_ttl(&self.time_exceeded_replies())
-        // get_links_by_ttl(&self.replies())
     }
 
     pub fn n_links_by_ttl(&self) -> HashMap<TTL, usize> {
@@ -95,7 +94,6 @@ impl DiamondMiner {
     pub fn time_exceeded_replies(&self) -> Vec<&Reply> {
         self.replies()
             .into_iter()
-            // .copied()
             .filter(|&r| r.is_time_exceeded())
             .collect::<Vec<_>>()
     }
@@ -150,17 +148,9 @@ impl DiamondMiner {
             .map(|r| r.reply_src_addr)
             .collect();
 
-        // if nodes_at_ttl.is_empty() {
-        //     println!("No nodes at TTL {}", ttl);
-        // }
-
         let nodes_at_ttl: Vec<IpAddr> = nodes_at_ttl.into_iter().collect();
 
-        // let nodes_at_ttl: Vec<&IpAddr> = nodes_at_ttl.iter().collect();
-
         let link_dist = self.nodes_distribution_at_ttl(&nodes_at_ttl, ttl);
-
-        // println!("   link_dist: {:?}", link_dist);
 
         let mut unresolved_nodes = HashSet::new();
         let mut weighted_thresholds = Vec::new();
@@ -175,58 +165,13 @@ impl DiamondMiner {
             let successors: HashSet<IpAddr> = self
                 .links_by_ttl()
                 .get(&ttl)
-                // .unwrap_or(&HashSet::new())
                 .unwrap_or(&vec![])
                 .iter()
-                // .filter(|l| (l.near_ip == Some(node) || l.near_ip.is_none()) && l.far_ip.is_some())
                 .filter(|l| (l.near_ip == Some(node) && l.far_ip.is_some()) || l.near_ip.is_none())
                 .map(|l| l.far_ip.unwrap())
                 .collect();
 
             let n_successors = successors.len();
-
-            // if n_successors == 0 && node != self.dst_addr {
-            //     println!(
-            //         "Node {} at TTL {} has no successors at TTL {}",
-            //         node,
-            //         ttl,
-            //         ttl + 1
-            //     );
-            //     println!(
-            //         "Its stopping point is {}",
-            //         stopping_point(0, self.failure_probability)
-            //     );
-            // } else {
-            //     println!(
-            //         "Node {} at TTL {} has {} successors at TTL {}: {:?}",
-            //         node,
-            //         ttl,
-            //         n_successors,
-            //         ttl + 1,
-            //         successors
-            //     );
-            //     println!(
-            //         "links at TTL {}: {:?}",
-            //         ttl,
-            //         self.links_by_ttl()
-            //             .get(&ttl)
-            //             .unwrap()
-            //             .iter()
-            //             .map(|l| (l.near_ip, l.far_ip))
-            //             .collect::<Vec<_>>()
-            //     );
-            //     println!(
-            //         "links at next TTL {}: {:?}",
-            //         ttl + 1,
-            //         self.links_by_ttl()
-            //             .get(&(ttl + 1))
-            //             // .unwrap_or(&HashSet::new())
-            //             .unwrap_or(&vec![])
-            //             .iter()
-            //             .map(|l| (l.near_ip, l.far_ip))
-            //             .collect::<Vec<_>>()
-            //     );
-            // }
 
             let n_k = stopping_point(n_successors, self.failure_probability);
 
@@ -259,10 +204,6 @@ impl DiamondMiner {
                 } else {
                     weighted_thresholds.push((n_k as f64 / link_dist[&node]) as usize);
                 }
-                // println!(
-                //     "Node {} at TTL {} is unresolved with n_k = {} and n_probes = {}, and weighted threshold = {}",
-                //     node, ttl, n_k, n_probes, (n_k as f64 / link_dist[&node]) as usize
-                // );
             }
         }
 
@@ -279,9 +220,6 @@ impl DiamondMiner {
             return vec![];
         }
 
-        // println!("links_by_ttl: {:?}", self.links_by_ttl());
-        // println!("probes_sent: {:?}", self.probes_sent);
-
         let mut max_flows_by_ttl = HashMap::new();
 
         if self.current_round == 1 {
@@ -291,9 +229,7 @@ impl DiamondMiner {
             }
         } else {
             for ttl in self.min_ttl..=self.max_ttl {
-                let (_unresolved_nodes, max_flow) =
-                    self.unresolved_nodes_at_ttl(ttl, estimate_successors);
-                // println!("Unresolved nodes at TTL {}: {:?}", ttl, _unresolved_nodes);
+                let (_, max_flow) = self.unresolved_nodes_at_ttl(ttl, estimate_successors);
                 max_flows_by_ttl.insert(ttl, max_flow);
             }
         }
@@ -312,9 +248,6 @@ impl DiamondMiner {
                 (ttl, sent_probes..combined_max_flow)
             })
             .collect();
-
-        // println!("current_round: {}", self.current_round);
-        // println!("Flows by TTL: {:?}", flows_by_ttl);
 
         let mut probes = vec![];
 

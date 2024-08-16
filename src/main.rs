@@ -47,10 +47,14 @@ fn main() -> Result<()> {
 
     while !probes.is_empty() {
         // print probes per TTL
-        println!("Probes per TTL:");
-        for (ttl, probes) in &probes.iter().group_by(|p| p.ttl) {
-            println!("  TTL {}: {}", ttl, probes.count());
+        println!("  Probes per TTL:");
+        for ttl in min_ttl..=max_ttl {
+            let ttl_probes = probes.iter().filter(|p| p.ttl == ttl).count();
+            if ttl_probes > 0 {
+                print!("  [TTL {}]: {}", ttl, ttl_probes);
+            }
         }
+        println!();
 
         let config = Config {
             receiver_wait_time: std::time::Duration::from_secs(2),
@@ -58,15 +62,15 @@ fn main() -> Result<()> {
             ..Config::default()
         };
         round += 1;
-        println!("Round: {}", round);
+        println!("- Round: {}", round);
         let replies = probe(config, probes.into_iter())?;
-        println!("received {} replies", replies.len());
+        println!("  received {} replies", replies.len());
         println!(
-            "time_exceeded_replies: {}",
+            "  including {} time exceeded replies",
             replies.iter().filter(|r| r.is_time_exceeded()).count()
         );
         probes = alg.next_round(replies, false);
-        println!("sending {} probes", probes.len());
+        println!("  sending {} probes", probes.len());
     }
 
     let end_time = Utc::now();
@@ -76,10 +80,10 @@ fn main() -> Result<()> {
     let n_links = alg.n_links_by_ttl();
 
     for ttl in 0..=max_ttl {
-        println!("  TTL {}: {} links", ttl, n_links.get(&ttl).unwrap_or(&0));
+        print!("  [TTL {}]: {} links", ttl, n_links.get(&ttl).unwrap_or(&0));
     }
 
-    println!("------------");
+    println!("\n------------");
 
     // print all replies ips per ttl per flow
 
@@ -107,7 +111,7 @@ fn main() -> Result<()> {
 
     for ttl in sorted_ttls.iter() {
         let table = ips_by_ttl.get(ttl).unwrap();
-        println!("TTL: {} -> {:?}", ttl, table);
+        println!("[TTL: {}] -> {:?}", ttl, table);
     }
 
     let pantrace_flows = replies_to_pantrace_flows(&alg.time_exceeded_replies());
