@@ -5,77 +5,20 @@ use std::vec;
 
 use caracat::high_level::Config;
 
-use chrono::DateTime;
-// use caracat::models::Reply;
+use chrono::Utc;
 use itertools::Itertools;
 use netdev::get_default_interface;
 use pantrace::formats::atlas::AtlasWriter;
-use pantrace::formats::internal::Protocol;
-use pantrace::formats::internal::Traceroute;
+use pantrace::formats::internal::{Protocol, Traceroute};
 use pantrace::traits::TracerouteWriter;
 use voyage::algorithms::diamond_miner::DiamondMiner;
 use voyage::pantrace_builder::replies_to_pantrace_flows;
-// use voyage::algorithms::utils::{general_prob, stopping_point};
 
 use anyhow::Result;
 use voyage::probe::probe;
-// use voyage::types::Flow;
 use voyage::types::TTL;
 
 fn main() -> Result<()> {
-    // println!("Hello, world!");
-    // for i in 1..=10 {
-    //     println!("{}: {}", i, stopping_point(i, 0.01));
-    // }
-
-    // let triplets = [
-    //     (4, 3, 2),
-    //     (2, 2, 1),
-    //     (2, 2, 2),
-    //     (3, 2, 1),
-    //     (3, 2, 2),
-    //     (3, 2, 3),
-    //     (3, 3, 1),
-    //     (3, 3, 2),
-    //     (3, 3, 3),
-    // ];
-    // for (K, n, k) in triplets {
-    //     println!("K:{} n:{} k:{} --> p:{}", K, n, k, general_prob(K, n, k));
-    // }
-
-    // return Ok(());
-    // println!("Let's go!");
-
-    // println!("32: {} (should be 211)", general_stopping_point(32, 0.05));
-    // return Ok(());
-
-    // for total_interfaces in 1..=10
-    // for n_probes in 1..=10
-    // for target_interfaces in 1..=total_interfaces
-    // print the general_prob(total_interfaces, n_probes, target_interfaces)
-
-    // for total_interfaces in 1..=10 {
-    //     for n_probes in 1..=10 {
-    //         for target_interfaces in 1..=total_interfaces {
-    //             println!(
-    //                 "N:{} k:{} n:{} --> p:{}",
-    //                 total_interfaces,
-    //                 n_probes,
-    //                 target_interfaces,
-    //                 general_prob(total_interfaces, n_probes, target_interfaces)
-    //             );
-    //         }
-    //     }
-    // }
-
-    // for total_interfaces in 1..=10 {
-    //     println!(
-    //         "N:{} stop:{}",
-    //         total_interfaces,
-    //         general_stopping_point(total_interfaces, 0.05)
-    //     );
-    // }
-
     // let dst_addr_str = "12.12.12.12";
     let dst_addr_str = "103.37.83.226";
     // let dst_addr_str = "104.18.32.7";
@@ -99,6 +42,8 @@ fn main() -> Result<()> {
     println!("sending {} probes", probes.len());
 
     let mut round = 0;
+
+    let start_time = Utc::now();
 
     while !probes.is_empty() {
         // print probes per TTL
@@ -124,6 +69,8 @@ fn main() -> Result<()> {
         println!("sending {} probes", probes.len());
     }
 
+    let end_time = Utc::now();
+
     let max_ttl = 20;
 
     let n_links = alg.n_links_by_ttl();
@@ -135,8 +82,6 @@ fn main() -> Result<()> {
     println!("------------");
 
     // print all replies ips per ttl per flow
-
-    let replies = alg.time_exceeded_replies();
 
     let ips_by_ttl: HashMap<TTL, HashSet<IpAddr>> = alg
         .links_by_ttl()
@@ -160,7 +105,6 @@ fn main() -> Result<()> {
         ttls
     };
 
-    // for (ttl, table) in ips_by_ttl_by_flow {
     for ttl in sorted_ttls.iter() {
         let table = ips_by_ttl.get(ttl).unwrap();
         println!("TTL: {} -> {:?}", ttl, table);
@@ -172,8 +116,8 @@ fn main() -> Result<()> {
         measurement_name: "diamond_miner".to_string(),
         measurement_id: "0".to_string(),
         agent_id: "0".to_string(),
-        start_time: DateTime::from_timestamp_micros(0).unwrap(),
-        end_time: DateTime::from_timestamp_micros(0).unwrap(),
+        start_time,
+        end_time,
         protocol: Protocol::ICMP,
         src_addr: IpAddr::from(Ipv4Addr::new(192, 168, 1, 1)),
         src_addr_public: None,
@@ -181,11 +125,31 @@ fn main() -> Result<()> {
         flows: pantrace_flows,
     };
 
+    println!("--- ATLAS output ---");
     let stdout = std::io::stdout();
-
     let mut atlas_writer: AtlasWriter<Stdout> = AtlasWriter::new(stdout);
-
     atlas_writer.write_traceroute(&traceroute)?;
+
+    println!("--- Iris output ---");
+    let stdout = std::io::stdout();
+    let mut iris_writer = pantrace::formats::iris::IrisWriter::new(stdout);
+    iris_writer.write_traceroute(&traceroute)?;
+
+    println!("--- flat / MetaTrace output ---");
+    let stdout = std::io::stdout();
+    let mut flat_writer = pantrace::formats::flat::FlatWriter::new(stdout);
+    flat_writer.write_traceroute(&traceroute)?;
+
+    println!("--- internal / Pantrace output ---");
+    let stdout = std::io::stdout();
+    let mut internal_writer = pantrace::formats::internal::InternalWriter::new(stdout);
+    internal_writer.write_traceroute(&traceroute)?;
+
+    // println!("--- Scamper / warts output (binary) ---");
+    // let stdout = std::io::stdout();
+    // let mut scamper_writer =
+    //     pantrace::formats::scamper_trace_warts::ScamperTraceWartsWriter::new(stdout);
+    // scamper_writer.write_traceroute(&traceroute)?;
 
     Ok(())
 }

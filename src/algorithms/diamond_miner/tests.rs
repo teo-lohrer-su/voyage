@@ -141,12 +141,10 @@ fn test_unresolved_nodes_at_ttl_complex() {
         reply(1, IP[1], DEST[4]),
         reply(1, IP[1], DEST[5]),
         reply(1, IP[1], DEST[6]),
-
         reply(2, IP[2], DEST[1]),
         reply(2, IP[2], DEST[2]),
         reply(2, IP[2], DEST[3]),
         reply(2, IP[2], DEST[4]),
-
         reply(2, IP[3], DEST[5]),
         reply(2, IP[3], DEST[6]),
     ];
