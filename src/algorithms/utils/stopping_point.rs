@@ -105,8 +105,6 @@ pub fn estimate_total_interfaces(
 #[cfg(test)]
 mod tests {
 
-    use std::result;
-
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha8Rng;
 

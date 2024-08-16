@@ -74,8 +74,8 @@ impl DiamondMiner {
     }
 
     pub fn links_by_ttl(&self) -> HashMap<TTL, Vec<Link>> {
-        // get_links_by_ttl(&self.time_exceeded_replies())
-        get_links_by_ttl(&self.replies())
+        get_links_by_ttl(&self.time_exceeded_replies())
+        // get_links_by_ttl(&self.replies())
     }
 
     pub fn n_links_by_ttl(&self) -> HashMap<TTL, usize> {
@@ -267,15 +267,6 @@ impl DiamondMiner {
         }
 
         let max_weighted_threshold = weighted_thresholds.into_iter().max().unwrap_or(0);
-
-        // if max_weighted_threshold == 0 && !unresolved_nodes.is_empty() {
-        //     println!("!!!!!!!!!!!!!!!!!!!!");
-        //     println!("!!!!!!!!!!!!!!!!!!!!");
-        //     println!("{} unresolved nodes at TTL {}", unresolved_nodes.len(), ttl);
-        //     println!("but max_weighted_threshold is 0");
-        //     println!("!!!!!!!!!!!!!!!!!!!!");
-        //     println!("!!!!!!!!!!!!!!!!!!!!");
-        // }
 
         (unresolved_nodes, max_weighted_threshold)
     }

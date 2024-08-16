@@ -1,13 +1,20 @@
 use std::collections::{HashMap, HashSet};
+use std::io::Stdout;
 use std::net::{IpAddr, Ipv4Addr};
 use std::vec;
 
 use caracat::high_level::Config;
 
+use chrono::DateTime;
 // use caracat::models::Reply;
 use itertools::Itertools;
 use netdev::get_default_interface;
+use pantrace::formats::atlas::AtlasWriter;
+use pantrace::formats::internal::Protocol;
+use pantrace::formats::internal::Traceroute;
+use pantrace::traits::TracerouteWriter;
 use voyage::algorithms::diamond_miner::DiamondMiner;
+use voyage::pantrace_builder::replies_to_pantrace_flows;
 // use voyage::algorithms::utils::{general_prob, stopping_point};
 
 use anyhow::Result;
@@ -70,11 +77,11 @@ fn main() -> Result<()> {
     // }
 
     // let dst_addr_str = "12.12.12.12";
-    // let dst_addr_str = "103.37.83.226";
+    let dst_addr_str = "103.37.83.226";
     // let dst_addr_str = "104.18.32.7";
     // let dst_addr_str = "157.240.221.35";
     // let dst_addr_str = "8.8.8.8";
-    let dst_addr_str = "1.1.1.1";
+    // let dst_addr_str = "1.1.1.1";
     let dst_addr = IpAddr::from(dst_addr_str.parse::<Ipv4Addr>()?);
     let min_ttl = 0;
     let max_ttl = 32;
@@ -113,7 +120,6 @@ fn main() -> Result<()> {
             "time_exceeded_replies: {}",
             replies.iter().filter(|r| r.is_time_exceeded()).count()
         );
-
         probes = alg.next_round(replies, false);
         println!("sending {} probes", probes.len());
     }
@@ -121,11 +127,9 @@ fn main() -> Result<()> {
     let max_ttl = 20;
 
     let n_links = alg.n_links_by_ttl();
-    // let links = alg.links_by_ttl();
 
     for ttl in 0..=max_ttl {
         println!("  TTL {}: {} links", ttl, n_links.get(&ttl).unwrap_or(&0));
-        // println!("          {:?}", links.get(&ttl).unwrap_or(&vec![]));
     }
 
     println!("------------");
@@ -161,6 +165,27 @@ fn main() -> Result<()> {
         let table = ips_by_ttl.get(ttl).unwrap();
         println!("TTL: {} -> {:?}", ttl, table);
     }
+
+    let pantrace_flows = replies_to_pantrace_flows(&alg.time_exceeded_replies());
+
+    let traceroute: Traceroute = Traceroute {
+        measurement_name: "diamond_miner".to_string(),
+        measurement_id: "0".to_string(),
+        agent_id: "0".to_string(),
+        start_time: DateTime::from_timestamp_micros(0).unwrap(),
+        end_time: DateTime::from_timestamp_micros(0).unwrap(),
+        protocol: Protocol::ICMP,
+        src_addr: IpAddr::from(Ipv4Addr::new(192, 168, 1, 1)),
+        src_addr_public: None,
+        dst_addr,
+        flows: pantrace_flows,
+    };
+
+    let stdout = std::io::stdout();
+
+    let mut atlas_writer: AtlasWriter<Stdout> = AtlasWriter::new(stdout);
+
+    atlas_writer.write_traceroute(&traceroute)?;
 
     Ok(())
 }

@@ -5,7 +5,6 @@ use log::info;
 use anyhow::Result;
 use caracat::{
     high_level::{Config, SendLoop},
-    // logger::StatisticsLogger,
     models::{Probe, Reply},
     rate_limiter::RateLimiter,
     sender::Sender,
@@ -14,13 +13,7 @@ use caracat::{
 
 use crate::receiver::ReceiveCache;
 
-pub fn probe<T: Iterator<Item = Probe>>(
-    config: Config,
-    probes: T,
-    // ) -> Result<(SendStatistics, ReceiveStatistics)> {
-) -> Result<Vec<Reply>> {
-    // info!("{}", config);
-
+pub fn probe<T: Iterator<Item = Probe>>(config: Config, probes: T) -> Result<Vec<Reply>> {
     let allowed_prefixes = match config.allowed_prefixes_file {
         None => None,
         Some(path) => Some(prefix_filter_from_file(&path)?),
