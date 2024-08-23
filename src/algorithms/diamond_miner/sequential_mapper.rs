@@ -10,7 +10,7 @@ pub const DEFAULT_PROBE_SRC_PORT: u16 = 24000;
 pub const DEFAULT_PROBE_DST_PORT: u16 = 33434;
 
 pub struct SequentialFlowMapper {
-    prefix_size: types::PrefixSize,
+    pub prefix_size: types::PrefixSize,
 }
 
 impl SequentialFlowMapper {

@@ -3,6 +3,7 @@ mod sequential_mapper;
 mod types;
 
 use caracat::models::{Probe, Reply, L4};
+use log::debug;
 pub use sequential_mapper::*;
 
 use std::collections::{HashMap, HashSet};
@@ -66,7 +67,9 @@ impl DiamondMiner {
             max_round,
             failure_probability,
             mapper_v4: SequentialFlowMapper::new(DEFAULT_PREFIX_SIZE_V4),
+            // mapper_v4: SequentialFlowMapper::new(1),
             mapper_v6: SequentialFlowMapper::new(DEFAULT_PREFIX_SIZE_V6),
+            // mapper_v6: SequentialFlowMapper::new(1),
             current_round: 0,
             probes_sent: HashMap::new(),
             replies_by_round: HashMap::new(),
@@ -84,7 +87,7 @@ impl DiamondMiner {
             .collect()
     }
 
-    fn replies(&self) -> Vec<&Reply> {
+    pub fn replies(&self) -> Vec<&Reply> {
         self.replies_by_round
             .values()
             .flat_map(|replies| replies.iter())
@@ -108,10 +111,6 @@ impl DiamondMiner {
                 .filter(|r| r.reply_src_addr == node && r.probe_ttl == ttl)
                 .count()
         }
-
-        // total number of observations of links reaching nodes at the current ttl.
-        // since links are stored with the 'near_ttl',
-        // we need to fetch them at ttl-1
 
         let link_dist: HashMap<IpAddr, usize> = nodes
             .iter()
@@ -156,7 +155,15 @@ impl DiamondMiner {
         let mut weighted_thresholds = Vec::new();
 
         for node in nodes_at_ttl {
-            if node == self.dst_addr {
+            // if node == self.dst_addr {
+            //     continue;
+            // }
+            // if the node is in the same subnet as the destination
+            let prefix_length = (32 - (128 - self.mapper_v4.prefix_size.leading_zeros())) as u8;
+            let dst_network =
+                ip_network::IpNetwork::new_truncate(self.dst_addr, prefix_length).unwrap();
+
+            if dst_network.contains(node) {
                 continue;
             }
 
@@ -203,11 +210,13 @@ impl DiamondMiner {
                         .push((n_k.max(optimal_n_k) as f64 / link_dist[&node]) as usize);
                 } else {
                     weighted_thresholds.push((n_k as f64 / link_dist[&node]) as usize);
+                    // weighted_thresholds.push(n_k as usize);
                 }
             }
         }
 
         let max_weighted_threshold = weighted_thresholds.into_iter().max().unwrap_or(0);
+        // let max_weighted_threshold = weighted_thresholds.into_iter().sum();
 
         (unresolved_nodes, max_weighted_threshold)
     }
