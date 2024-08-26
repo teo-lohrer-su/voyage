@@ -167,7 +167,7 @@ fn main() -> Result<()> {
             alg.links_by_ttl()
                 .values()
                 .flatten()
-                .filter(|link| link.near_ip.is_some() || link.far_ip.is_some()),
+                .filter(|link| link.near_ip.is_some() && link.far_ip.is_some()),
         )
         .len();
 
