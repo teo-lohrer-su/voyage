@@ -207,13 +207,6 @@ impl DiamondMiner {
                 // .filter(|l| l.near_ip == Some(node))
                 .count();
 
-            if ttl == 4 || ttl == 5 || ttl == 6 {
-                println!(
-                    "[TTL {}]  {}: n_probes: {}, n_successors: {}, n_k: {}",
-                    ttl, node, n_probes, n_successors, n_k
-                );
-            }
-
             // if a node has no successors, but is not the destination, it is unresolved
             if n_probes >= n_k || node == self.dst_addr {
                 // node is resolved
@@ -241,11 +234,6 @@ impl DiamondMiner {
 
         let max_weighted_threshold = weighted_thresholds.into_iter().max().unwrap_or(0);
         // let max_weighted_threshold = weighted_thresholds.into_iter().sum();
-
-        debug!(
-            "unresolved nodes at ttl {}: {:?}, max_weighted_threshold: {}",
-            ttl, unresolved_nodes, max_weighted_threshold
-        );
 
         (unresolved_nodes, max_weighted_threshold)
     }
