@@ -153,12 +153,34 @@ fn main() -> Result<()> {
             replies.iter().filter(|r| r.is_time_exceeded()).count()
         );
 
+        let prep_start = Utc::now();
+
         probes = alg.next_round(replies, estimate_successsors);
+
+        let prep_end = Utc::now();
+
+        debug!(
+            "Preparation time: {}s",
+            (prep_end - prep_start).num_milliseconds() as f64 * 1e-3
+        );
 
         let n_probes_per_ttl = probes.iter().group_by(|probe| probe.ttl);
 
         for (ttl, probes) in n_probes_per_ttl.into_iter() {
             debug!("TTL {}: {} probes", ttl, probes.count());
+        }
+        for ttl in min_ttl..=max_ttl {
+            // number of ips at this ttl
+            debug!(
+                "TTL {}: {} ips",
+                ttl,
+                alg.time_exceeded_replies()
+                    .iter()
+                    .filter(|r| r.probe_ttl == ttl)
+                    .map(|r| r.reply_src_addr)
+                    .unique()
+                    .count()
+            );
         }
 
         // fetch the total number of distinct links in the alg
@@ -167,7 +189,8 @@ fn main() -> Result<()> {
             alg.links_by_ttl()
                 .values()
                 .flatten()
-                .filter(|link| link.near_ip.is_some() && link.far_ip.is_some()),
+                .filter(|link| link.near_ip.is_some() && link.far_ip.is_some())
+                .unique(),
         )
         .len();
 
@@ -184,7 +207,7 @@ fn main() -> Result<()> {
             total_links,
             total_ips.len(),
             probes.len(),
-            probes.len() as f64 / (args.probing_rate as f64),
+            args.receiver_wait_time as f64 + (probes.len() as f64 / (args.probing_rate as f64)),
         );
     }
 

@@ -3,6 +3,8 @@ mod sequential_mapper;
 mod types;
 
 use caracat::models::{Probe, Reply, L4};
+use itertools::Itertools;
+use log::{debug, warn};
 // use log::debug;
 pub use sequential_mapper::*;
 
@@ -83,6 +85,7 @@ impl DiamondMiner {
     // echo replies and destination unreachable replies should count towards successors counts
     pub fn links_by_ttl(&self) -> HashMap<TTL, Vec<Link>> {
         get_links_by_ttl(&self.replies())
+        // get_links_by_ttl(&self.time_exceeded_replies())
     }
 
     pub fn n_links_by_ttl(&self) -> HashMap<TTL, usize> {
@@ -123,6 +126,7 @@ impl DiamondMiner {
             .collect();
 
         let total: usize = link_dist.values().sum();
+
         let link_dist: HashMap<IpAddr, f64> = if total > 0 {
             link_dist
                 .into_iter()
@@ -174,13 +178,16 @@ impl DiamondMiner {
 
             // successors are nodes at the next TTL that share a link with the current node
             // or links where we do not know the near_ip, ie. the far node is a potential successor
+            // ^ this is not true, we only consider links where we know the near_ip AND the far_ip
             let successors: HashSet<IpAddr> = self
                 .links_by_ttl()
                 .get(&ttl)
                 .unwrap_or(&vec![])
                 .iter()
-                .filter(|l| (l.near_ip == Some(node) && l.far_ip.is_some()) || l.near_ip.is_none())
-                .map(|l| l.far_ip.unwrap())
+                // .filter(|l| (l.near_ip == Some(node) && l.far_ip.is_some()) || l.near_ip.is_none())
+                .filter(|l| l.near_ip == Some(node))
+                .filter_map(|l| l.far_ip)
+                .unique()
                 .collect();
 
             let n_successors = successors.len();
@@ -197,7 +204,15 @@ impl DiamondMiner {
                 .unwrap_or(&vec![])
                 .iter()
                 .filter(|l| l.near_ip == Some(node) && l.far_ip.is_some())
+                // .filter(|l| l.near_ip == Some(node))
                 .count();
+
+            if ttl == 4 || ttl == 5 || ttl == 6 {
+                println!(
+                    "[TTL {}]  {}: n_probes: {}, n_successors: {}, n_k: {}",
+                    ttl, node, n_probes, n_successors, n_k
+                );
+            }
 
             // if a node has no successors, but is not the destination, it is unresolved
             if n_probes >= n_k || node == self.dst_addr {
@@ -205,23 +220,32 @@ impl DiamondMiner {
                 continue;
             }
 
-            if n_probes < n_k {
+            if n_probes < n_k && n_successors > 0 {
                 // node is unresolved
                 unresolved_nodes.insert(node);
                 if estimate_successors {
                     let estimate = estimate_total_interfaces(n_k, n_probes, LIKELIHOOD_THRESHOLD);
                     let optimal_n_k = stopping_point(estimate, self.failure_probability);
-                    weighted_thresholds
-                        .push((n_k.max(optimal_n_k) as f64 / link_dist[&node]) as usize);
+                    if link_dist[&node] >= 0.001 {
+                        weighted_thresholds
+                            .push((n_k.max(optimal_n_k) as f64 / link_dist[&node]) as usize);
+                    }
                 } else {
-                    weighted_thresholds.push((n_k as f64 / link_dist[&node]) as usize);
-                    // weighted_thresholds.push(n_k as usize);
+                    if link_dist[&node] >= 0.001 {
+                        weighted_thresholds.push((n_k as f64 / link_dist[&node]) as usize);
+                        // weighted_thresholds.push(n_k as usize);
+                    }
                 }
             }
         }
 
         let max_weighted_threshold = weighted_thresholds.into_iter().max().unwrap_or(0);
         // let max_weighted_threshold = weighted_thresholds.into_iter().sum();
+
+        debug!(
+            "unresolved nodes at ttl {}: {:?}, max_weighted_threshold: {}",
+            ttl, unresolved_nodes, max_weighted_threshold
+        );
 
         (unresolved_nodes, max_weighted_threshold)
     }

@@ -92,7 +92,6 @@ pub(crate) fn get_links_by_ttl(replies: &[&Reply]) -> HashMap<TTL, Vec<Link>> {
                 far_ip: pair.second_reply.map(|r| r.reply_src_addr),
             };
 
-            // links_by_ttl.entry(pair.ttl).or_default().insert(link);
             links_by_ttl.entry(pair.ttl).or_default().push(link);
         }
     }

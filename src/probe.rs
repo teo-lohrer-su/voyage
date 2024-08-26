@@ -58,7 +58,10 @@ pub fn probe<T: Iterator<Item = Probe>>(config: Config, probes: T) -> Result<Vec
     // let logger = StatisticsLogger::new(prober_statistics, rate_statistics, receiver_statistics);
 
     prober.probe(probes)?;
-    info!("Waiting {:?} for replies...", config.receiver_wait_time);
+    info!(
+        "Waiting {:?} for last replies...",
+        config.receiver_wait_time
+    );
     sleep(config.receiver_wait_time);
 
     // TODO: Cleaner way?
