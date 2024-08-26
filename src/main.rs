@@ -121,10 +121,17 @@ fn main() -> Result<()> {
         dst_addr, min_ttl, max_ttl, src_port, dst_port, protocol, confidence, max_round,
     );
 
-    let mut probes = alg.next_round(vec![], estimate_successsors);
-    info!("sending {} probes", probes.len());
-
     let mut round = 0;
+
+    let mut probes = alg.next_round(vec![], estimate_successsors);
+    info!(
+        "round={} links_found={} total_ip={} probes={} expected_time={:.1}s",
+        round,
+        0,
+        0,
+        probes.len(),
+        probes.len() as f64 / (args.probing_rate as f64),
+    );
 
     let start_time = Utc::now();
 
@@ -140,7 +147,7 @@ fn main() -> Result<()> {
         };
         round += 1;
         let replies = probe(config, probes.into_iter())?;
-        info!(
+        debug!(
             "received {} replies including {} time exceeded replies",
             replies.len(),
             replies.iter().filter(|r| r.is_time_exceeded()).count()
@@ -151,7 +158,7 @@ fn main() -> Result<()> {
         let n_probes_per_ttl = probes.iter().group_by(|probe| probe.ttl);
 
         for (ttl, probes) in n_probes_per_ttl.into_iter() {
-            info!("TTL {}: {} probes", ttl, probes.count());
+            debug!("TTL {}: {} probes", ttl, probes.count());
         }
 
         // fetch the total number of distinct links in the alg
@@ -177,7 +184,7 @@ fn main() -> Result<()> {
             total_links,
             total_ips.len(),
             probes.len(),
-            probes.len() as f64 / 100.0,
+            probes.len() as f64 / (args.probing_rate as f64),
         );
     }
 
@@ -209,7 +216,7 @@ fn main() -> Result<()> {
 
     for ttl in min_ttl..=max_ttl {
         let table = ips_by_ttl.entry(ttl).or_default();
-        info!("[TTL: {}] -> {:?}", ttl, table);
+        debug!("[TTL: {}] -> {:?}", ttl, table);
         if table.contains(&dst_addr) {
             break;
         }
