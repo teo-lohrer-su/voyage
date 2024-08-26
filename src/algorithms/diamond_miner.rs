@@ -76,8 +76,13 @@ impl DiamondMiner {
         }
     }
 
+    // pub fn links_by_ttl(&self) -> HashMap<TTL, Vec<Link>> {
+    //     get_links_by_ttl(&self.time_exceeded_replies())
+    // }
+
+    // echo replies and destination unreachable replies should count towards successors counts
     pub fn links_by_ttl(&self) -> HashMap<TTL, Vec<Link>> {
-        get_links_by_ttl(&self.time_exceeded_replies())
+        get_links_by_ttl(&self.replies())
     }
 
     pub fn n_links_by_ttl(&self) -> HashMap<TTL, usize> {

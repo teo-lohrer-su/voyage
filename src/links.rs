@@ -23,10 +23,10 @@ fn get_pairs_by_flow<'a>(replies: &[&'a Reply]) -> HashMap<Flow, Vec<ReplyPair<'
     if replies.is_empty() {
         return HashMap::new();
     }
-    let (min_ttl, max_ttl) = (
-        replies.iter().map(|r| r.probe_ttl).min().unwrap(),
-        replies.iter().map(|r| r.probe_ttl).max().unwrap(),
-    );
+    // let (min_ttl, max_ttl) = (
+    //     replies.iter().map(|r| r.probe_ttl).min().unwrap(),
+    //     replies.iter().map(|r| r.probe_ttl).max().unwrap(),
+    // );
     // println!("min_ttl: {}, max_ttl: {}", min_ttl, max_ttl);
     let mut pairs_by_flow: HashMap<Flow, Vec<ReplyPair>> = HashMap::new();
 
@@ -39,10 +39,10 @@ fn get_pairs_by_flow<'a>(replies: &[&'a Reply]) -> HashMap<Flow, Vec<ReplyPair<'
         let ttl_replies = get_replies_by_ttl(flow_replies.as_slice());
 
         // maybe compute the min and max ttl over ALL flows?
-        // let (min_ttl, max_ttl) = (
-        //     *ttl_replies.keys().min().unwrap(),
-        //     *ttl_replies.keys().max().unwrap(),
-        // );
+        let (min_ttl, max_ttl) = (
+            *ttl_replies.keys().min().unwrap(),
+            *ttl_replies.keys().max().unwrap(),
+        );
         // println!("min_ttl: {}, max_ttl: {}", min_ttl, max_ttl);
 
         // for each ttl (we consider the ttl to be the one for the near reply)
