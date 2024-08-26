@@ -268,7 +268,48 @@ fn main() -> Result<()> {
         //         pantrace::formats::scamper_trace_warts::ScamperTraceWartsWriter::new(stdout);
         //     scamper_writer.write_traceroute(&traceroute)?;
         // }
-        OutputFormat::Quiet => {}
+        OutputFormat::Quiet => {
+            debug!("Links");
+            // print all links found
+            let mut end = false;
+            for ttl in min_ttl..=max_ttl {
+                if !end {
+                    debug!("[TTL: {}]", ttl);
+                } else {
+                    break;
+                }
+                for link in alg
+                    .links_by_ttl()
+                    .get(&ttl)
+                    .unwrap_or(&vec![])
+                    .iter()
+                    .unique()
+                {
+                    let (near, far) = match (link.near_ip, link.far_ip) {
+                        (Some(near), Some(far)) => (format!("{}", near), format!("{}", far)),
+                        (Some(near), None) => (format!("{}", near), "*".to_string()),
+                        (None, Some(far)) => ("*".to_string(), format!("{}", far)),
+                        (None, None) => ("*".to_string(), "*".to_string()),
+                    };
+                    debug!("|  {} -- {}", near, far);
+                    if link.far_ip == Some(dst_addr) {
+                        end = true;
+                        break;
+                    }
+                }
+            }
+            // debug!(
+            //     "Links: {}",
+            //     alg.links_by_ttl()
+            //         .values()
+            //         .flatten()
+            //         .filter(|link| link.near_ip.is_some() && link.far_ip.is_some())
+            //         .unique()
+            //         .map(|link| format!("{:?}", link))
+            //         .collect::<Vec<_>>()
+            //         .join(", ")
+            // );
+        }
     }
 
     Ok(())
