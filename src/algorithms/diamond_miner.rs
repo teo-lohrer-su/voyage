@@ -3,7 +3,7 @@ mod sequential_mapper;
 mod types;
 
 use caracat::models::{Probe, Reply, L4};
-use log::debug;
+// use log::debug;
 pub use sequential_mapper::*;
 
 use std::collections::{HashMap, HashSet};

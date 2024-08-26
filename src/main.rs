@@ -88,6 +88,10 @@ struct Args {
     #[arg(long, default_value_t = 1)]
     receiver_wait_time: u64,
 
+    /// Probing rate in packets per second
+    #[arg(long, default_value_t = 100)]
+    probing_rate: u64,
+
     /// Network interface to use
     #[arg(short, long)]
     interface: Option<String>,
@@ -125,17 +129,9 @@ fn main() -> Result<()> {
     let start_time = Utc::now();
 
     while !probes.is_empty() {
-        // print probes per TTL
-        // println!("  Probes per TTL:");
-        // for ttl in min_ttl..=max_ttl {
-        //     let ttl_probes = probes.iter().filter(|p| p.ttl == ttl).count();
-        //     if ttl_probes > 0 {
-        //         print!("  [TTL {}]: {}", ttl, ttl_probes);
-        //     }
-        // }
-
         let config = Config {
             receiver_wait_time: Duration::from_secs(args.receiver_wait_time),
+            probing_rate: args.probing_rate,
             interface: args
                 .interface
                 .clone()
@@ -181,7 +177,7 @@ fn main() -> Result<()> {
             total_links,
             total_ips.len(),
             probes.len(),
-            probes.len() as f64 / 1000.0,
+            probes.len() as f64 / 100.0,
         );
     }
 
@@ -206,7 +202,7 @@ fn main() -> Result<()> {
     for reply in alg.replies() {
         if reply.reply_src_addr == dst_addr {
             let ttl = reply.probe_ttl;
-            let table = ips_by_ttl.entry(ttl).or_insert(HashSet::new());
+            let table = ips_by_ttl.entry(ttl).or_default();
             table.insert(reply.reply_src_addr);
         }
     }
