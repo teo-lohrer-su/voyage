@@ -219,12 +219,12 @@ impl DiamondMiner {
                 if estimate_successors {
                     let estimate = estimate_total_interfaces(n_k, n_probes, LIKELIHOOD_THRESHOLD);
                     let optimal_n_k = stopping_point(estimate, self.failure_probability);
-                    if link_dist[&node] >= 0.001 {
+                    if link_dist[&node] >= 0.005 {
                         weighted_thresholds
                             .push((n_k.max(optimal_n_k) as f64 / link_dist[&node]) as usize);
                     }
                 } else {
-                    if link_dist[&node] >= 0.001 {
+                    if link_dist[&node] >= 0.005 {
                         weighted_thresholds.push((n_k as f64 / link_dist[&node]) as usize);
                         // weighted_thresholds.push(n_k as usize);
                     }
