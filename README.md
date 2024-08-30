@@ -148,7 +148,6 @@ Contributions are welcome! Please open an issue or submit a pull request on the 
 
 We would like to acknowledge the contributions and support from the following:
 
-- **Dioptra**: [DIOPTRA Homepage](https://dioptra.io)
-- **Maxime Mouchet**: For the development of the `pantrace` and `caracat` crates. [pantrace](https://crates.io/crates/pantrace), [caracat](https://crates.io/crates/caracat)
-- **paris-traceroute**: For pioneering advanced traceroute techniques. [paris-traceroute](https://github.com/dioptra-io/paris-traceroute)
+- **Dioptra**: [Dioptra Homepage](https://dioptra.io)
+- **Maxime Mouchet**: For the development of the [pantrace](https://crates.io/crates/pantrace) and [caracat](https://crates.io/crates/caracat) crates.
 - **fast-mda-traceroute**: A Python project that prototyped most of this tool. [fast-mda-traceroute](https://github.com/dioptra-io/fast-mda-traceroute)
