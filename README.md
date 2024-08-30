@@ -13,6 +13,7 @@ Voyage is a Rust-based network probing tool that leverages the Diamond Miner alg
 - [Estimate Successors Option](#estimate-successors-option)
 - [Logging](#logging)
 - [Contributing](#contributing)
+- [Acknowledgements](#acknowledgements)
 
 ## Prerequisites
 
@@ -117,17 +118,17 @@ The `--estimate-successors` option attempts to guess the number of successors of
 
 The estimation process involves:
 
-1. **Stirling Ratios**: See [Stirling numbers of the second kind](https://en.wikipedia.org/wiki/Stirling_numbers_of_the_second_kind) and [Stirling Numbers crate](https://docs.rs/stirling_numbers/0.1.0/stirling_numbers/fn.stirling2_ratio_table.html).
+1. **Stirling Ratios**: See [Stirling numbers of the second kind](https://en.wikipedia.org/wiki/Stirling_numbers_of_the_second_kind) and the [stirling_numbers crate](https://docs.rs/stirling_numbers/latest/stirling_numbers/fn.stirling2_ratio_table.html).
 
-2. **Stopping Point**: The smallest number of probes $n$ such that the probability of finding all $k+1$ interfaces is at least $1 - p$, where $p$ is the failure probability.
+2. **Event Probability**: The probability of finding exactly $k$ interfaces after $n$ probes given $K$ total interfaces. This is calculated as:
 
-3. **Event Probability**: The probability of finding exactly $k$ interfaces after $n$ probes given $K$ total interfaces. This is calculated as:
-   $$\mathbb{P}[Y_{n, K} = k] = \frac{\binom{K}{k}\cdot {n\brace k}\cdot k!}{K^n}$$
+   $$\mathbb{P}[Y_{n, K} = k] = \frac{1}{K^n}\cdot\binom{K}{k}\cdot {n\brace k}\cdot k!$$
+
    where $\binom{K}{k}$ is the binomial coefficient, and ${n\brace k}$ is the Stirling number of the second kind.
 
-4. **Total Interfaces Estimation**: Using the event probability, we can find the most *likely* number of interfaces $K$ given the number of probes $n$ and the number of interfaces discovered so far $k$.
+3. **Total Interfaces Estimation**: Using the event probability, we can find the most *likely* number of interfaces $K$ given the number of probes $n$ and the number of interfaces discovered so far $k$.
 
-This option can help optimize the probing process by reducing the number of probing *round*, at the cost of marginally more probes, thus potentially making the traceroute operation more efficient when many load balancers exhibit large numbers of outgoing interfaces.
+This option can help optimize the probing process by reducing the number of probing *rounds*, at the cost of marginally more probes, thus potentially making the traceroute operation more efficient when many load balancers exhibit large numbers of outgoing interfaces.
 
 # Logging
 
@@ -140,3 +141,12 @@ RUST_LOG=info ./target/release/voyage --dst-addr 8.8.8.8
 ## Contributing
 
 Contributions are welcome! Please open an issue or submit a pull request on the [GitHub repository](https://github.com/teo-lohrer-su/voyage).
+
+## Acknowledgements
+
+We would like to acknowledge the contributions and support from the following:
+
+- **Dioptra**: [DIOPTRA Homepage](https://dioptra.io)
+- **Maxime Mouchet**: For the development of the `pantrace` and `caracat` crates. [pantrace](https://crates.io/crates/pantrace), [caracat](https://crates.io/crates/caracat)
+- **paris-traceroute**: For pioneering advanced traceroute techniques. [paris-traceroute](https://github.com/dioptra-io/paris-traceroute)
+- **fast-mda-traceroute**: A Python project that prototyped most of this tool. [fast-mda-traceroute](https://github.com/dioptra-io/fast-mda-traceroute)
