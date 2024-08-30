@@ -27,7 +27,7 @@ enum OutputFormat {
     Iris,
     Flat,
     Internal,
-    // Scamper, // Uncomment if you want to include this option
+    Scamper,
     Quiet,
 }
 
@@ -38,7 +38,7 @@ impl fmt::Display for OutputFormat {
             OutputFormat::Iris => write!(f, "iris"),
             OutputFormat::Flat => write!(f, "flat"),
             OutputFormat::Internal => write!(f, "internal"),
-            // OutputFormat::Scamper => write!(f, "scamper"),
+            OutputFormat::Scamper => write!(f, "scamper"),
             OutputFormat::Quiet => write!(f, "quiet"),
         }
     }
@@ -302,13 +302,14 @@ fn main() -> Result<()> {
             let stdout = std::io::stdout();
             let mut internal_writer = pantrace::formats::internal::InternalWriter::new(stdout);
             internal_writer.write_traceroute(&traceroute)?;
-        } // OutputFormat::Scamper => {
-        //     println!("--- Scamper / warts output (binary) ---");
-        //     let stdout = std::io::stdout();
-        //     let mut scamper_writer =
-        //         pantrace::formats::scamper_trace_warts::ScamperTraceWartsWriter::new(stdout);
-        //     scamper_writer.write_traceroute(&traceroute)?;
-        // }
+        }
+        OutputFormat::Scamper => {
+            println!("--- Scamper / warts output (binary) ---");
+            let stdout = std::io::stdout();
+            let mut scamper_writer =
+                pantrace::formats::scamper_trace_warts::ScamperTraceWartsWriter::new(stdout);
+            scamper_writer.write_traceroute(&traceroute)?;
+        }
         OutputFormat::Quiet => {
             debug!("Links");
             // print all links found

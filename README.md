@@ -1,6 +1,6 @@
 # :boat: Voyage
 
-Voyage is a Rust-based network probing tool that leverages the Diamond Miner algorithm to perform traceroute operations. It supports multiple output formats including Atlas, Iris, Flat, and Internal. The tool is designed to be efficient and configurable, allowing users to specify various parameters such as TTL range, ports, confidence level, and probing rate.
+Voyage is a Rust-based network probing tool that leverages the Diamond Miner algorithm to perform traceroute operations. It supports multiple output formats including Atlas, Iris, MetaTrace, and Scamper wart (binary). The tool is designed to be efficient and configurable, allowing users to specify various parameters such as TTL range, ports, confidence level, and probing rate.
 
 :warning: This is a research project and is still under development. Use it at your own risk.
 
@@ -82,7 +82,7 @@ Options:
   -c, --confidence <CONFIDENCE>        Confidence level [default: 99.0]
   -m, --max-round <MAX_ROUND>          Maximum number of rounds [default: 100]
   -e, --estimate-successors            Estimate successors [default: false]
-  -o, --output-format <OUTPUT_FORMAT>  Output format [default: atlas] [possible values: atlas, iris, flat, internal, quiet]
+  -o, --output-format <OUTPUT_FORMAT>  Output format [default: atlas] [possible values: atlas, iris, flat, internal, scamper, quiet]
       --receiver-wait-time <RECEIVER_WAIT_TIME>
                                        Receiver wait time in seconds [default: 1]
       --probing-rate <PROBING_RATE>    Probing rate in packets per second [default: 100]
