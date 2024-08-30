@@ -122,9 +122,7 @@ The estimation process involves:
 2. **Stopping Point**: The smallest number of probes $n$ such that the probability of finding all $k+1$ interfaces is at least $1 - p$, where $p$ is the failure probability.
 
 3. **Event Probability**: The probability of finding exactly $k$ interfaces after $n$ probes given $K$ total interfaces. This is calculated as:
-   ```math
-   \mathbb{P}[Y_{n, K} = k] = \frac{\binom{K}{k}\cdot {n\brace k}\cdot k!}{K^n}
-   ```
+   $$\mathbb{P}[Y_{n, K} = k] = \frac{\binom{K}{k}\cdot {n\brace k}\cdot k!}{K^n}$$
    where $\binom{K}{k}$ is the binomial coefficient, and ${n\brace k}$ is the Stirling number of the second kind.
 
 4. **Total Interfaces Estimation**: Using the event probability, we can find the most *likely* number of interfaces $K$ given the number of probes $n$ and the number of interfaces discovered so far $k$.
