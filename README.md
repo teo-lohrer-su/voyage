@@ -117,17 +117,17 @@ The `--estimate-successors` option attempts to guess the number of successors of
 
 The estimation process involves:
 
-1. **Stirling Ratios**: Precomputed ratios that represent the probability of finding a certain number of interfaces after a given number of probes. These ratios are defined as $\frac{S(n, k)}{k^n \cdot k!}$, where $S(n, k)$ is the Stirling number of the second kind. For more details, see [Stirling numbers of the second kind](https://en.wikipedia.org/wiki/Stirling_numbers_of_the_second_kind).
+1. **Stirling Ratios**: See [Stirling numbers of the second kind](https://en.wikipedia.org/wiki/Stirling_numbers_of_the_second_kind) and [Stirling Numbers crate](https://docs.rs/stirling_numbers/0.1.0/stirling_numbers/fn.stirling2_ratio_table.html).
 
-2. **Stopping Point**: The smallest number of probes $n$ such that the probability of finding $k+1$ interfaces is at least $1 - p$, where $p$ is the failure probability. Mathematically, this is determined by finding the smallest $n$ for which $\frac{S(n, k+1)}{(k+1)^n \cdot (k+1)!} \geq 1 - p$.
+2. **Stopping Point**: The smallest number of probes $n$ such that the probability of finding all $k+1$ interfaces is at least $1 - p$, where $p$ is the failure probability.
 
 3. **Event Probability**: The probability of finding exactly $k$ interfaces after $n$ probes given $K$ total interfaces. This is calculated as:
-   $$
-   P(K, n, k) = \binom{K}{k} \cdot \left( \frac{k}{K} \right)^n \cdot \frac{S(n, k)}{k^n \cdot k!}
-   $$
-   where $\binom{K}{k}$ is the binomial coefficient. For more details, see [Binomial coefficient](https://en.wikipedia.org/wiki/Binomial_coefficient).
+   ```math
+   \mathbb{P}[Y_{n, K} = k] = \frac{\binom{K}{k}\cdot {n\brace k}\cdot k!}{K^n}
+   ```
+   where $\binom{K}{k}$ is the binomial coefficient, and ${n\brace k}$ is the Stirling number of the second kind.
 
-4. **Total Interfaces Estimation**: Using the event probability to estimate the total number of interfaces $K$ based on the observed number of interfaces $k$ and probes $n$. The estimation is made by finding the smallest $K$ such that $P(K, n, k) \geq \text{likelihood threshold}$.
+4. **Total Interfaces Estimation**: Using the event probability, we can find the most *likely* number of interfaces $K$ given the number of probes $n$ and the number of interfaces discovered so far $k$.
 
 This option can help optimize the probing process by reducing the number of probing *round*, at the cost of marginally more probes, thus potentially making the traceroute operation more efficient when many load balancers exhibit large numbers of outgoing interfaces.
 
