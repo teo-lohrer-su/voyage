@@ -1,4 +1,4 @@
-# Voyage
+# :boat: Voyage
 
 Voyage is a Rust-based network probing tool that leverages the Diamond Miner algorithm to perform traceroute operations. It supports multiple output formats including Atlas, Iris, Flat, and Internal. The tool is designed to be efficient and configurable, allowing users to specify various parameters such as TTL range, ports, confidence level, and probing rate.
 
