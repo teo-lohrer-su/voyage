@@ -119,7 +119,7 @@ The estimation process involves:
 
 1. **Stirling Ratios**: Precomputed ratios that represent the probability of finding a certain number of interfaces after a given number of probes. These ratios are defined as $ \frac{S(n, k)}{k^n \cdot k!} $, where $ S(n, k) $ is the Stirling number of the second kind. For more details, see [Stirling numbers of the second kind](https://en.wikipedia.org/wiki/Stirling_numbers_of_the_second_kind).
 
-2. **Stopping Point**: The smallest number of probes $ n $ such that the probability of finding $ k+1 $ interfaces is at least $ 1 - p $, where $ p $ is the failure probability. Mathematically, this is determined by finding the smallest $ n $ for which $ \frac{S(n, k+1)}{(k+1)^n \cdot (k+1)!} \geq 1 - p $.
+2. **Stopping Point**: The smallest number of probes $n$ such that the probability of finding $k+1$ interfaces is at least $ 1 - p $, where $ p $ is the failure probability. Mathematically, this is determined by finding the smallest $ n $ for which $ \frac{S(n, k+1)}{(k+1)^n \cdot (k+1)!} \geq 1 - p $.
 
 3. **Event Probability**: The probability of finding exactly $ k $ interfaces after $ n $ probes given $ K $ total interfaces. This is calculated as:
    \[
