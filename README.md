@@ -144,6 +144,13 @@ The `debug` log level provides detailed information about the probing process, i
 
 Contributions are welcome! Please open an issue or submit a pull request on the [GitHub repository](https://github.com/teo-lohrer-su/voyage).
 
+### TODO
+
+- [ ] Traceroute single path output format
+- [ ] DNS resolution
+- [ ] ICMPv6 support
+- [ ] Port the topological tests from the Python prototype
+
 ## Acknowledgements
 
 We would like to acknowledge the contributions and support from the following:
