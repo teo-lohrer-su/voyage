@@ -1,5 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use std::io::Stdout;
 use std::net::{IpAddr, Ipv4Addr};
 use std::time::Duration;
 use std::{fmt, vec};
@@ -41,6 +40,21 @@ impl fmt::Display for OutputFormat {
             OutputFormat::Internal => write!(f, "internal"),
             // OutputFormat::Scamper => write!(f, "scamper"),
             OutputFormat::Quiet => write!(f, "quiet"),
+        }
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
+enum ProtocolArg {
+    ICMP,
+    UDP,
+}
+
+impl From<ProtocolArg> for caracat::models::L4 {
+    fn from(protocol: ProtocolArg) -> Self {
+        match protocol {
+            ProtocolArg::UDP => caracat::models::L4::UDP,
+            ProtocolArg::ICMP => caracat::models::L4::ICMP,
         }
     }
 }
@@ -92,6 +106,10 @@ struct Args {
     #[arg(long, default_value_t = 100)]
     probing_rate: u64,
 
+    /// Protocol to use (ICMP or UDP)
+    #[arg(short, long, value_enum, default_value_t = ProtocolArg::ICMP)]
+    protocol: ProtocolArg,
+
     /// Network interface to use
     #[arg(short, long)]
     interface: Option<String>,
@@ -112,7 +130,7 @@ fn main() -> Result<()> {
     let max_ttl = args.max_ttl;
     let src_port = args.src_port;
     let dst_port = args.dst_port;
-    let protocol = caracat::models::L4::ICMP;
+    let protocol = args.protocol.into();
     let confidence = args.confidence;
     let max_round = args.max_round;
     let estimate_successsors = args.estimate_successors;
@@ -264,7 +282,7 @@ fn main() -> Result<()> {
         OutputFormat::Atlas => {
             debug!("--- ATLAS output ---");
             let stdout = std::io::stdout();
-            let mut atlas_writer: AtlasWriter<Stdout> = AtlasWriter::new(stdout);
+            let mut atlas_writer = AtlasWriter::new(stdout);
             atlas_writer.write_traceroute(&traceroute)?;
         }
         OutputFormat::Iris => {
