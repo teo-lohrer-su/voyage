@@ -130,13 +130,15 @@ The estimation process involves:
 
 This option can help optimize the probing process by reducing the number of probing *rounds*, at the cost of marginally more probes, thus potentially making the traceroute operation more efficient when many load balancers exhibit large numbers of outgoing interfaces.
 
-# Logging
+## Logging
 
 Voyage uses the `env_logger` crate for logging. You can control the log level by setting the `RUST_LOG` environment variable. For example:
 
 ```sh
 RUST_LOG=info ./target/release/voyage --dst-addr 8.8.8.8
 ```
+
+The `debug` log level provides detailed information about the probing process, including the number of interfaces discovered, the number of probes sent, the discovered links, *etc.*
 
 ## Contributing
 
