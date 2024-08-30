@@ -2,6 +2,18 @@
 
 Voyage is a Rust-based network probing tool that leverages the Diamond Miner algorithm to perform traceroute operations. It supports multiple output formats including Atlas, Iris, Flat, and Internal. The tool is designed to be efficient and configurable, allowing users to specify various parameters such as TTL range, ports, confidence level, and probing rate.
 
+:warning: This is a research project and is still under development. Use it at your own risk.
+
+## Table of Contents
+
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Usage](#usage)
+  - [Example](#example)
+- [Estimate Successors Option](#estimate-successors-option)
+- [Logging](#logging)
+- [Contributing](#contributing)
+
 ## Prerequisites
 
 Before you can build and run Voyage, you need to have the following dependencies installed:
@@ -105,17 +117,17 @@ The `--estimate-successors` option attempts to guess the number of successors of
 
 The estimation process involves:
 
-1. **Stirling Ratios**: Precomputed ratios that represent the probability of finding a certain number of interfaces after a given number of probes. These ratios are defined as \( \frac{S(n, k)}{k^n \cdot k!} \), where \( S(n, k) \) is the Stirling number of the second kind. For more details, see [Stirling numbers of the second kind](https://en.wikipedia.org/wiki/Stirling_numbers_of_the_second_kind).
+1. **Stirling Ratios**: Precomputed ratios that represent the probability of finding a certain number of interfaces after a given number of probes. These ratios are defined as $ \frac{S(n, k)}{k^n \cdot k!} $, where $ S(n, k) $ is the Stirling number of the second kind. For more details, see [Stirling numbers of the second kind](https://en.wikipedia.org/wiki/Stirling_numbers_of_the_second_kind).
 
-2. **Stopping Point**: The smallest number of probes \( n \) such that the probability of finding \( k+1 \) interfaces is at least \( 1 - p \), where \( p \) is the failure probability. Mathematically, this is determined by finding the smallest \( n \) for which \( \frac{S(n, k+1)}{(k+1)^n \cdot (k+1)!} \geq 1 - p \).
+2. **Stopping Point**: The smallest number of probes $ n $ such that the probability of finding $ k+1 $ interfaces is at least $ 1 - p $, where $ p $ is the failure probability. Mathematically, this is determined by finding the smallest $ n $ for which $ \frac{S(n, k+1)}{(k+1)^n \cdot (k+1)!} \geq 1 - p $.
 
-3. **Event Probability**: The probability of finding exactly \( k \) interfaces after \( n \) probes given \( K \) total interfaces. This is calculated as:
+3. **Event Probability**: The probability of finding exactly $ k $ interfaces after $ n $ probes given $ K $ total interfaces. This is calculated as:
    \[
    P(K, n, k) = \binom{K}{k} \cdot \left( \frac{k}{K} \right)^n \cdot \frac{S(n, k)}{k^n \cdot k!}
    \]
-   where \( \binom{K}{k} \) is the binomial coefficient. For more details, see [Binomial coefficient](https://en.wikipedia.org/wiki/Binomial_coefficient).
+   where $ \binom{K}{k} $ is the binomial coefficient. For more details, see [Binomial coefficient](https://en.wikipedia.org/wiki/Binomial_coefficient).
 
-4. **Total Interfaces Estimation**: Using the event probability to estimate the total number of interfaces \( K \) based on the observed number of interfaces \( k \) and probes \( n \). The estimation is made by finding the smallest \( K \) such that \( P(K, n, k) \geq \text{likelihood threshold} \).
+4. **Total Interfaces Estimation**: Using the event probability to estimate the total number of interfaces $ K $ based on the observed number of interfaces $ k $ and probes $ n $. The estimation is made by finding the smallest $ K $ such that $ P(K, n, k) \geq \text{likelihood threshold} $.
 
 This option can help optimize the probing process by reducing the number of probing *round*, at the cost of marginally more probes, thus potentially making the traceroute operation more efficient when many load balancers exhibit large numbers of outgoing interfaces.
 
