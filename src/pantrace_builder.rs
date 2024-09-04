@@ -49,7 +49,7 @@ fn generate_pantrace_traceroute_flow(replies: &[&Reply]) -> TracerouteFlow {
         dst_port,
         hops: replies
             .iter()
-            .group_by(|r| r.reply_ttl)
+            .group_by(|r| r.probe_ttl)
             .into_iter()
             .map(|(ttl, replies)| TracerouteHop {
                 ttl,
@@ -67,4 +67,8 @@ pub fn replies_to_pantrace_flows(replies: &[&Reply]) -> Vec<TracerouteFlow> {
         .into_values()
         .map(|replies| generate_pantrace_traceroute_flow(&replies))
         .collect()
+}
+
+pub fn replies_to_single_pantrace_flow(replies: &[&Reply]) -> TracerouteFlow {
+    generate_pantrace_traceroute_flow(replies)
 }

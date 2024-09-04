@@ -13,7 +13,8 @@ use pantrace::formats::atlas::AtlasWriter;
 use pantrace::formats::internal::{Protocol, Traceroute};
 use pantrace::traits::TracerouteWriter;
 use voyage::algorithms::diamond_miner::DiamondMiner;
-use voyage::pantrace_builder::replies_to_pantrace_flows;
+use voyage::classic_traceroute::ClassicTracerouteWriter;
+use voyage::pantrace_builder::{replies_to_pantrace_flows, replies_to_single_pantrace_flow};
 
 use anyhow::Result;
 use voyage::probe::probe;
@@ -27,6 +28,7 @@ enum OutputFormat {
     Iris,
     Flat,
     Internal,
+    Traceroute,
     Scamper,
     Quiet,
 }
@@ -38,6 +40,7 @@ impl fmt::Display for OutputFormat {
             OutputFormat::Iris => write!(f, "iris"),
             OutputFormat::Flat => write!(f, "flat"),
             OutputFormat::Internal => write!(f, "internal"),
+            OutputFormat::Traceroute => write!(f, "traceroute"),
             OutputFormat::Scamper => write!(f, "scamper"),
             OutputFormat::Quiet => write!(f, "quiet"),
         }
@@ -178,7 +181,7 @@ fn main() -> Result<()> {
         let prep_end = Utc::now();
 
         debug!(
-            "Preparation time: {}s",
+            "Preparation time: {:.3}s",
             (prep_end - prep_start).num_milliseconds() as f64 * 1e-3
         );
 
@@ -187,19 +190,19 @@ fn main() -> Result<()> {
         for (ttl, probes) in n_probes_per_ttl.into_iter() {
             debug!("TTL {}: {} probes", ttl, probes.count());
         }
-        for ttl in min_ttl..=max_ttl {
-            // number of ips at this ttl
-            debug!(
-                "TTL {}: {} ips",
-                ttl,
-                alg.time_exceeded_replies()
-                    .iter()
-                    .filter(|r| r.probe_ttl == ttl)
-                    .map(|r| r.reply_src_addr)
-                    .unique()
-                    .count()
-            );
-        }
+        // for ttl in min_ttl..=max_ttl {
+        //     // number of ips at this ttl
+        //     debug!(
+        //         "TTL {}: {} ips",
+        //         ttl,
+        //         alg.time_exceeded_replies()
+        //             .iter()
+        //             .filter(|r| r.probe_ttl == ttl)
+        //             .map(|r| r.reply_src_addr)
+        //             .unique()
+        //             .count()
+        //     );
+        // }
 
         // fetch the total number of distinct links in the alg
 
@@ -279,6 +282,19 @@ fn main() -> Result<()> {
     };
 
     match args.output_format {
+        OutputFormat::Traceroute => {
+            debug!("--- Traceroute output ---");
+            let stdout = std::io::stdout();
+            let classic_traceroute_flow = replies_to_single_pantrace_flow(&alg.replies());
+            // replies_to_single_pantrace_flow(&alg.time_exceeded_replies());
+            let traceroute = Traceroute {
+                flows: vec![classic_traceroute_flow],
+                ..traceroute
+            };
+            let mut traceroute_writer =
+                ClassicTracerouteWriter::new(stdout, min_ttl, max_ttl, dst_addr);
+            traceroute_writer.write_traceroute(&traceroute)?;
+        }
         OutputFormat::Atlas => {
             debug!("--- ATLAS output ---");
             let stdout = std::io::stdout();

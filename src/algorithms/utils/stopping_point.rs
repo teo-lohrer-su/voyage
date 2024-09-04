@@ -10,7 +10,7 @@ type Probability = f64;
 const MAX_N_PROBES: usize = 722;
 const MAX_N_INTERFACES: usize = 1024;
 
-pub const LIKELIHOOD_THRESHOLD: Probability = 0.95;
+pub const LIKELIHOOD_THRESHOLD: Probability = 0.68;
 
 // using a Lazy to avoid recomputing the table every time
 // Stirling_2 ratios are defined as the S(n, k) / (k^n * k!)
@@ -172,7 +172,7 @@ mod tests {
                     let diff = (simulated_prob - computed_prob).abs();
                     assert!(
                         diff <= 0.05,
-                        "n_interfaces: {} n_probes: {} target_interfaces: {} simulated: {} computed: {}", 
+                        "n_interfaces: {} n_probes: {} target_interfaces: {} simulated: {} computed: {}",
                         n_interfaces,
                         n_probes,
                         target_interfaces,

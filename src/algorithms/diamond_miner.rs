@@ -4,7 +4,7 @@ mod types;
 
 use caracat::models::{Probe, Reply, L4};
 use itertools::Itertools;
-use log::debug;
+// use log::debug;
 // use log::{debug, warn};
 pub use sequential_mapper::*;
 
@@ -125,7 +125,7 @@ impl DiamondMiner {
             .map(|&node| (node, node_replies(&self.replies(), node, ttl)))
             .collect();
 
-        debug!("TTL {}: Link_dist: {:?}", ttl, link_dist);
+        // debug!("TTL {}: Link_dist: {:?}", ttl, link_dist);
 
         let total: usize = link_dist.values().sum();
 
