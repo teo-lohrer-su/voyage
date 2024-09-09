@@ -71,19 +71,19 @@ where
                 for (ip, probes) in probes_by_host.into_iter() {
                     let probes = probes.collect_vec();
                     if let Some(ip) = ip {
-                        write!(self.output, "\t{} ({})", ip, ip).unwrap();
+                        write!(self.output, "   {} ({})", ip, ip).unwrap();
                         for probe in probes.iter() {
                             let reply = probe.reply.as_ref().unwrap();
-                            write!(self.output, "\t{:.3} ms", reply.rtt / 10.0).unwrap();
+                            write!(self.output, "  {:.3} ms", reply.rtt / 10.0).unwrap();
                             found_dst = found_dst || (ip == self.dst_addr);
                         }
                         write!(self.output, "\n").unwrap();
                     } else {
-                        write!(self.output, "\t*\n").unwrap();
+                        write!(self.output, "   *\n").unwrap();
                     }
                 }
             } else {
-                write!(self.output, "\t*\n").unwrap();
+                write!(self.output, "   *\n").unwrap();
             }
         }
 
