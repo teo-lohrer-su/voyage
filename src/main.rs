@@ -116,6 +116,10 @@ struct Args {
     /// Network interface to use
     #[arg(short, long)]
     interface: Option<String>,
+
+    /// Instance ID
+    #[arg(long)]
+    id: Option<u16>,
 }
 
 fn main() -> Result<()> {
@@ -164,6 +168,7 @@ fn main() -> Result<()> {
                 .interface
                 .clone()
                 .unwrap_or_else(|| get_default_interface().unwrap().name),
+            instance_id: args.id.unwrap_or(0),
             ..Config::default()
         };
         round += 1;
