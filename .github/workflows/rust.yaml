@@ -12,18 +12,19 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        rust: [stable, beta, nightly]
-        os: [ubuntu-latest, macos-latest]
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install libpcap (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
+      - name: Install libpcap
         run: sudo apt-get update && sudo apt-get install -y libpcap-dev
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
 
       - name: Cache cargo registry
         uses: actions/cache@v3
@@ -31,16 +32,9 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-          key: ${{ matrix.os }}-cargo-${{ matrix.rust }}-${{ hashFiles('**/Cargo.lock') }}
+          key: ubuntu-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ matrix.os }}-cargo-${{ matrix.rust }}-
-
-      - name: Set up Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{ matrix.rust }}
-          profile: minimal
-          override: true
+            ubuntu-cargo-
 
       - name: Install dependencies
         run: cargo fetch
