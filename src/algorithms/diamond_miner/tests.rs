@@ -31,7 +31,7 @@ const DEST: [&str; 10] = [
 
 fn diamond_miner() -> DiamondMiner {
     DiamondMiner::new(
-        IpAddr::V4(IP[0].parse().unwrap()),
+        IpAddr::V4(DEST[0].parse().unwrap()),
         1,
         20,
         24000,
@@ -92,9 +92,9 @@ fn test_unresolved_nodes_at_ttl_basic() {
         IpAddr::V4(IP[2].parse().unwrap()),
     ];
 
-    // let links_by_ttl = miner.links_by_ttl();
-    // println!(">> miner.replies_by_round: {:?}", miner.replies_by_round);
-    // println!(">>links_by_ttl: {:?}", links_by_ttl);
+    let links_by_ttl = miner.links_by_ttl();
+    println!(">> miner.replies_by_round: {:?}", miner.replies_by_round);
+    println!(">>links_by_ttl: {:?}", links_by_ttl);
 
     // we fetch the unresolved nodes at TTL 1
     let (unresolved_nodes, max_weighted_threshold) = miner.unresolved_nodes_at_ttl(1, false);
@@ -103,8 +103,9 @@ fn test_unresolved_nodes_at_ttl_basic() {
     assert_eq!(
         unresolved_nodes.len(),
         1,
-        "Unresolved nodes number. unresolved_nodes: {:?}",
-        unresolved_nodes
+        "Unresolved nodes number. unresolved_nodes: {:?}, max_weighted_threshold: {}",
+        unresolved_nodes,
+        max_weighted_threshold
     );
     assert_eq!(max_weighted_threshold, 6, "Max weighted threshold");
     assert_eq!(
@@ -180,6 +181,8 @@ fn test_unresolved_nodes_at_ttl_missing_link() {
     // we should have IP[1] as unresolved at TTL 1
     // since we do not know where the response from IP[3] went through
     // we have to hypothesize that IP[3] is a potential successor of IP[1]
+    // ^^^ this is not true, we would need to hypothesize that all nodes
+    // at ttl n+1 are connected to all nodes at ttl n
     let replies = vec![
         reply(1, IP[1], DEST[1]),
         reply(1, IP[1], DEST[2]),
@@ -208,16 +211,12 @@ fn test_unresolved_nodes_at_ttl_missing_link() {
 
     assert_eq!(
         unresolved_nodes.len(),
-        1,
+        // 1,
+        0,
         "Unresolved nodes number. unresolved_nodes: {:?}",
         unresolved_nodes
     );
-    assert_eq!(max_weighted_threshold, 11, "Max weighted threshold");
-    assert_eq!(
-        unresolved_nodes.into_iter().next().unwrap(),
-        IpAddr::V4(IP[1].parse().unwrap()),
-        "Unresolved nodes"
-    );
+    assert_eq!(max_weighted_threshold, 0, "Max weighted threshold");
 }
 
 fn probes_to_count(probes: Vec<Probe>) -> HashMap<TTL, usize> {

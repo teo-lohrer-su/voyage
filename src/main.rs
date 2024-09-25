@@ -14,7 +14,7 @@ use pantrace::formats::internal::{Protocol, Traceroute};
 use pantrace::traits::TracerouteWriter;
 use voyage::algorithms::diamond_miner::DiamondMiner;
 use voyage::classic_traceroute::ClassicTracerouteWriter;
-use voyage::pantrace_builder::{replies_to_pantrace_flows, replies_to_single_pantrace_flow};
+use voyage::pantrace_builder::replies_to_pantrace_flows;
 
 use anyhow::Result;
 use voyage::probe::probe;
@@ -98,7 +98,7 @@ struct Args {
     estimate_successors: bool,
 
     /// Output format
-    #[arg(short, long, value_enum, default_value_t = OutputFormat::Atlas)]
+    #[arg(short, long, value_enum, default_value_t = OutputFormat::Traceroute)]
     output_format: OutputFormat,
 
     /// Receiver wait time in seconds
@@ -271,7 +271,8 @@ fn main() -> Result<()> {
         }
     }
 
-    let pantrace_flows = replies_to_pantrace_flows(&alg.time_exceeded_replies());
+    // let pantrace_flows = replies_to_pantrace_flows(&alg.time_exceeded_replies());
+    let pantrace_flows = replies_to_pantrace_flows(&alg.replies());
 
     let traceroute: Traceroute = Traceroute {
         measurement_name: "diamond_miner".to_string(),
@@ -286,18 +287,22 @@ fn main() -> Result<()> {
         flows: pantrace_flows,
     };
 
+    println!(
+        ">>> total probes in flows: {}",
+        traceroute
+            .flows
+            .iter()
+            .map(|f| f.hops.iter().map(|h| h.probes.len()).sum::<usize>())
+            .sum::<usize>()
+    );
+
     match args.output_format {
         OutputFormat::Traceroute => {
             debug!("--- Traceroute output ---");
             let stdout = std::io::stdout();
-            let classic_traceroute_flow = replies_to_single_pantrace_flow(&alg.replies());
-            // replies_to_single_pantrace_flow(&alg.time_exceeded_replies());
-            let traceroute = Traceroute {
-                flows: vec![classic_traceroute_flow],
-                ..traceroute
-            };
+            let total_flows = traceroute.flows.len();
             let mut traceroute_writer =
-                ClassicTracerouteWriter::new(stdout, min_ttl, max_ttl, dst_addr);
+                ClassicTracerouteWriter::new(stdout, min_ttl, max_ttl, dst_addr, total_flows);
             traceroute_writer.write_traceroute(&traceroute)?;
         }
         OutputFormat::Atlas => {
@@ -361,17 +366,6 @@ fn main() -> Result<()> {
                     }
                 }
             }
-            // debug!(
-            //     "Links: {}",
-            //     alg.links_by_ttl()
-            //         .values()
-            //         .flatten()
-            //         .filter(|link| link.near_ip.is_some() && link.far_ip.is_some())
-            //         .unique()
-            //         .map(|link| format!("{:?}", link))
-            //         .collect::<Vec<_>>()
-            //         .join(", ")
-            // );
         }
     }
 

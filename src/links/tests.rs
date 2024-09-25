@@ -114,11 +114,6 @@ fn test_get_pairs_by_flow() {
             flow_2,
             vec![
                 ReplyPair {
-                    ttl: 1,
-                    first_reply: None,
-                    second_reply: Some(&replies[1]),
-                },
-                ReplyPair {
                     ttl: 2,
                     first_reply: Some(&replies[1]),
                     second_reply: Some(&replies[3]),

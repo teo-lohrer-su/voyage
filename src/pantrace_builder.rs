@@ -68,7 +68,3 @@ pub fn replies_to_pantrace_flows(replies: &[&Reply]) -> Vec<TracerouteFlow> {
         .map(|replies| generate_pantrace_traceroute_flow(&replies))
         .collect()
 }
-
-pub fn replies_to_single_pantrace_flow(replies: &[&Reply]) -> TracerouteFlow {
-    generate_pantrace_traceroute_flow(replies)
-}

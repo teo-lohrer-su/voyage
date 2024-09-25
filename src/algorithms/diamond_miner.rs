@@ -84,8 +84,8 @@ impl DiamondMiner {
 
     // echo replies and destination unreachable replies should count towards successors counts
     pub fn links_by_ttl(&self) -> HashMap<TTL, Vec<Link>> {
-        get_links_by_ttl(&self.replies())
-        // get_links_by_ttl(&self.time_exceeded_replies())
+        // get_links_by_ttl(&self.replies())
+        get_links_by_ttl(&self.time_exceeded_replies())
     }
 
     pub fn n_links_by_ttl(&self) -> HashMap<TTL, usize> {
@@ -170,11 +170,17 @@ impl DiamondMiner {
             //     continue;
             // }
             // if the node is in the same subnet as the destination
-            let prefix_length = (32 - (128 - self.mapper_v4.prefix_size.leading_zeros())) as u8;
+            let prefix_length = (1 + 32 - (128 - self.mapper_v4.prefix_size.leading_zeros())) as u8;
+
             let dst_network =
                 ip_network::IpNetwork::new_truncate(self.dst_addr, prefix_length).unwrap();
 
             if dst_network.contains(node) {
+                // println!("network: {:?}", dst_network);
+                // println!(
+                //     "Node {} is in the same subnet as the destination {}, with prefix length {}",
+                //     node, self.dst_addr, prefix_length
+                // );
                 continue;
             }
 
@@ -209,13 +215,13 @@ impl DiamondMiner {
                 // .filter(|l| l.near_ip == Some(node))
                 .count();
 
-            // if a node has no successors, but is not the destination, it is unresolved
             if n_probes >= n_k || node == self.dst_addr {
                 // node is resolved
                 continue;
             }
 
-            if n_probes < n_k && n_successors > 0 {
+            // if n_probes < n_k && n_successors > 0 {
+            if n_probes < n_k {
                 // node is unresolved
                 unresolved_nodes.insert(node);
                 if estimate_successors {
