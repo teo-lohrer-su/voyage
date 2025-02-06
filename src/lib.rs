@@ -13,3 +13,5 @@ pub mod pantrace_builder;
 pub mod helpers;
 
 pub mod classic_traceroute;
+
+pub mod scamper_one;

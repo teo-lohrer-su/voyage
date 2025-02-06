@@ -4,8 +4,7 @@ use std::net::IpAddr;
 
 use anyhow::Result;
 
-use itertools::Itertools;
-use pantrace::formats::internal::{Traceroute, TracerouteHop};
+use pantrace::formats::internal::Traceroute;
 use pantrace::traits::TracerouteWriter;
 
 pub struct ClassicTracerouteWriter<W: Write> {
@@ -42,7 +41,7 @@ where
         let packet_size = traceroute.flows[0].hops[0].probes[0].size;
         write!(
             self.output,
-            "traceroute to {}({}), {} hops max, {} bytes packets, flow {}/{}\n",
+            "traceroute to {} ({}), {} hops max, {} bytes packets, flow {}/{}\n",
             traceroute.dst_addr,
             traceroute.dst_addr,
             self.max_ttl,
@@ -60,19 +59,10 @@ where
             // .flatten()
             .collect::<Vec<_>>();
 
-        let hops_by_ttl = all_hops
-            .into_iter()
-            .group_by(|hop| hop.ttl)
-            .into_iter()
-            .fold(
-                HashMap::<u8, Vec<&TracerouteHop>>::new(),
-                |mut acc, (ttl, group)| {
-                    acc.entry(ttl)
-                        .or_insert_with(Vec::new)
-                        .extend(group.into_iter());
-                    acc
-                },
-            );
+        let hops_by_ttl = all_hops.into_iter().fold(HashMap::new(), |mut acc, hop| {
+            acc.entry(hop.ttl).or_insert_with(Vec::new).push(hop);
+            acc
+        });
 
         let mut found_dst = false;
 
@@ -104,9 +94,10 @@ where
                     let mean_rtt = rtts.iter().sum::<f64>() / rtts.len() as f64;
                     write!(
                         self.output,
-                        "  {:.3} ms ({} probes)",
+                        "  {:.3} ms ({} {})",
                         mean_rtt / 10.0,
-                        rtts.len()
+                        rtts.len(),
+                        if rtts.len() > 1 { "replies" } else { "reply" }
                     )
                     .unwrap();
                     write!(self.output, "\n").unwrap();

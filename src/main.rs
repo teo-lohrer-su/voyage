@@ -15,6 +15,7 @@ use pantrace::traits::TracerouteWriter;
 use voyage::algorithms::diamond_miner::DiamondMiner;
 use voyage::classic_traceroute::ClassicTracerouteWriter;
 use voyage::pantrace_builder::replies_to_pantrace_flows;
+use voyage::scamper_one::Scamper1;
 
 use anyhow::Result;
 use voyage::probe::probe;
@@ -29,7 +30,8 @@ enum OutputFormat {
     Flat,
     Internal,
     Traceroute,
-    Scamper,
+    ScamperWarts,
+    Scamper1,
     Quiet,
 }
 
@@ -41,7 +43,8 @@ impl fmt::Display for OutputFormat {
             OutputFormat::Flat => write!(f, "flat"),
             OutputFormat::Internal => write!(f, "internal"),
             OutputFormat::Traceroute => write!(f, "traceroute"),
-            OutputFormat::Scamper => write!(f, "scamper"),
+            OutputFormat::ScamperWarts => write!(f, "scamper warts"),
+            OutputFormat::Scamper1 => write!(f, "scamper1"),
             OutputFormat::Quiet => write!(f, "quiet"),
         }
     }
@@ -86,7 +89,7 @@ struct Args {
     dst_port: u16,
 
     /// Confidence level
-    #[arg(short, long, default_value_t = 99.0)]
+    #[arg(short, long, default_value_t = 95.0)]
     confidence: f64,
 
     /// Maximum number of rounds
@@ -195,19 +198,6 @@ fn main() -> Result<()> {
         for (ttl, probes) in n_probes_per_ttl.into_iter() {
             debug!("TTL {}: {} probes", ttl, probes.count());
         }
-        // for ttl in min_ttl..=max_ttl {
-        //     // number of ips at this ttl
-        //     debug!(
-        //         "TTL {}: {} ips",
-        //         ttl,
-        //         alg.time_exceeded_replies()
-        //             .iter()
-        //             .filter(|r| r.probe_ttl == ttl)
-        //             .map(|r| r.reply_src_addr)
-        //             .unique()
-        //             .count()
-        //     );
-        // }
 
         // fetch the total number of distinct links in the alg
 
@@ -287,15 +277,6 @@ fn main() -> Result<()> {
         flows: pantrace_flows,
     };
 
-    println!(
-        ">>> total probes in flows: {}",
-        traceroute
-            .flows
-            .iter()
-            .map(|f| f.hops.iter().map(|h| h.probes.len()).sum::<usize>())
-            .sum::<usize>()
-    );
-
     match args.output_format {
         OutputFormat::Traceroute => {
             debug!("--- Traceroute output ---");
@@ -329,12 +310,22 @@ fn main() -> Result<()> {
             let mut internal_writer = pantrace::formats::internal::InternalWriter::new(stdout);
             internal_writer.write_traceroute(&traceroute)?;
         }
-        OutputFormat::Scamper => {
+        OutputFormat::ScamperWarts => {
             println!("--- Scamper / warts output (binary) ---");
             let stdout = std::io::stdout();
             let mut scamper_writer =
                 pantrace::formats::scamper_trace_warts::ScamperTraceWartsWriter::new(stdout);
             scamper_writer.write_traceroute(&traceroute)?;
+        }
+        OutputFormat::Scamper1 => {
+            println!("--- Scamper1 output ---");
+            // let stdout = std::io::stdout();
+            let scamper1 = Scamper1::from(&traceroute);
+            // scamper1 is deserializable to json
+            let scamper1_json = serde_json::to_string(&scamper1)?;
+            // write the json to stdout
+            // write!(stdout, scamper1_json.as_bytes())?;
+            println!("{}", scamper1_json);
         }
         OutputFormat::Quiet => {
             debug!("Links");

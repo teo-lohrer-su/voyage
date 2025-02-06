@@ -215,10 +215,10 @@ impl DiamondMiner {
                 // .filter(|l| l.near_ip == Some(node))
                 .count();
 
-            if n_probes >= n_k || node == self.dst_addr {
-                // node is resolved
-                continue;
-            }
+            // if n_probes >= n_k || node == self.dst_addr {
+            //     // node is resolved
+            //     continue;
+            // }
 
             // if n_probes < n_k && n_successors > 0 {
             if n_probes < n_k {
@@ -241,7 +241,6 @@ impl DiamondMiner {
         }
 
         let max_weighted_threshold = weighted_thresholds.into_iter().max().unwrap_or(0);
-        // let max_weighted_threshold = weighted_thresholds.into_iter().sum();
 
         (unresolved_nodes, max_weighted_threshold)
     }
@@ -279,6 +278,9 @@ impl DiamondMiner {
                     previous_max.max(max_flow)
                 };
                 let sent_probes = *self.probes_sent.get(&ttl).unwrap_or(&0);
+                // let replies = self.replies().iter().filter(|r| r.probe_ttl == ttl).count();
+                // let empty_probes = sent_probes.saturating_sub(replies);
+                // (ttl, sent_probes..(combined_max_flow + empty_probes))
                 (ttl, sent_probes..combined_max_flow)
             })
             .collect();
@@ -295,12 +297,12 @@ impl DiamondMiner {
                             IpAddr::V4(addr) => {
                                 let ip_offset = ip_offset as u32;
                                 let addr = u32::from(addr);
-                                let new_addr = addr + 2 * ip_offset;
+                                let new_addr = addr + ip_offset;
                                 IpAddr::V4(new_addr.into())
                             }
                             IpAddr::V6(addr) => {
                                 let addr = u128::from(addr);
-                                let new_addr = addr + 2 * ip_offset;
+                                let new_addr = addr + ip_offset;
                                 IpAddr::V6(new_addr.into())
                             }
                         };
