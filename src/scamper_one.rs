@@ -172,13 +172,13 @@ pub struct Tracelb {
     pub start: TracelbStart,
 
     /// Size of the probe to send.
-    pub probe_size: f64,
+    pub probe_size: usize,
 
     /// Where to start probing.
     pub firsthop: Option<f64>,
 
     /// Number of attempts per probe.
-    pub attempts: Option<f64>,
+    pub attempts: Option<usize>,
 
     /// Confidence level to attain.
     pub confidence: f64,
@@ -187,7 +187,7 @@ pub struct Tracelb {
     pub tos: Option<f64>,
 
     /// Maximum consecutive unresponsive hops.
-    pub gaplimit: Option<f64>,
+    pub gaplimit: Option<usize>,
 
     /// Seconds to wait before timeout.
     pub wait_timeout: Option<f64>,
@@ -196,16 +196,16 @@ pub struct Tracelb {
     pub wait_probe: Option<f64>,
 
     /// Count of probes sent, including retries.
-    pub probec: f64,
+    pub probec: usize,
 
     /// Maximum number of probes to send.
-    pub probec_max: Option<f64>,
+    pub probec_max: Option<usize>,
 
     /// The number of nodes in the traceroute.
-    pub nodec: Option<f64>,
+    pub nodec: Option<usize>,
 
     /// The number of links in the traceroute.
-    pub linkc: Option<f64>,
+    pub linkc: Option<usize>,
 
     pub nodes: Vec<TracelbNode>,
 }
@@ -222,48 +222,93 @@ impl From<&Traceroute> for Tracelb {
             .probes
             .first()
             .unwrap()
-            .size as f64;
+            .size as usize;
         let probec = traceroute
             .flows
             .iter()
             .map(|flow| flow.hops.iter().map(|hop| hop.probes.len()).sum::<usize>())
-            .sum::<usize>() as f64;
+            .sum::<usize>();
 
         let mut nodes: Vec<TracelbNode> = vec![];
-        let mut links_by_ttl_by_addr: HashMap<String, HashMap<u8, Vec<TracelbLinkDetails>>> =
-            HashMap::new();
+        // large hashmap
+        // source address -> ttl -> dest address -> link details
+        let mut links_by_reply_addr_by_ttl_by_addr: HashMap<
+            String,
+            HashMap<u8, HashMap<String, TracelbLinkDetails>>,
+        > = HashMap::new();
 
-        for (_flow_id, flow) in traceroute.flows.iter().enumerate() {
+        let mut hop_ids_by_addr: HashMap<String, u8> = HashMap::new();
+        let mut global_hop_id = 0..;
+
+        for (flow_id, flow) in traceroute.flows.iter().enumerate() {
             // For each flow we will collect the links, per node
-            for ((_hop_id, hop), (_next_hop_id, _next_hop)) in
+            // CAUTION: a different flow_id does not equate to a new link!!
+            for ((_hop_id, hop), (_next_hop_id, next_hop)) in
                 flow.hops.iter().enumerate().tuple_windows()
             {
-                // For all couples of successive hops
-                // let's build links
-                hop.probes
+                // we have two consecutive hops
+                // we will build the corresponding Links.links
+                // these links are hooked to a "Node"
+                // the node is characterized by an address and a q_ttl
+                // ...plus the links
+                // we store in hashmap the following
+                // - for each source address (the address of the node)
+                //   - for an observed TTL
+                //     - for a destination address (dest. of the link)
+                //       - we store a list of links
+                //
+                // let's start by fetching the hop IP address
+                let start_addr = hop
+                    .probes
+                    .first()
+                    .unwrap()
+                    .reply
+                    .as_ref()
+                    .unwrap()
+                    .addr
+                    .to_string();
+
+                hop_ids_by_addr
+                    .entry(start_addr.clone())
+                    .or_insert_with(|| global_hop_id.next().unwrap());
+
+                let probes_by_reply_addr = next_hop
+                    .probes
                     .iter()
                     .map(|probe| {
-                        let reply = probe.reply.as_ref().unwrap();
-                        let addr = reply.addr.to_string();
-                        let ttl = reply.quoted_ttl;
-                        let tracelb_link_probe = TracelbLinkProbe::from(probe);
-                        (addr, ttl, tracelb_link_probe)
+                        let reply = probe.reply.as_ref();
+                        let addr = match reply {
+                            Some(reply) => reply.addr.to_string(),
+                            None => "*".to_string(),
+                        };
+                        (addr, probe)
                     })
-                    .for_each(
-                        // populate links_by_ttl_by_addr
-                        |(addr, ttl, tracelb_link_probe)| {
-                            let link = TracelbLinkDetails {
-                                addr: addr.clone(),
-                                probes: Some(vec![tracelb_link_probe]),
-                            };
-                            links_by_ttl_by_addr
-                                .entry(addr.clone())
-                                .or_default()
-                                .entry(ttl)
-                                .or_default()
-                                .push(link);
-                        },
-                    );
+                    .into_group_map();
+                // ^^ this should be of length one
+                // and the values should be of length one since a single probe has the current flow_id
+
+                for (addr, probes) in probes_by_reply_addr {
+                    let reply_addr = addr.clone();
+                    let link_probes = probes.into_iter().map(|probe| {
+                        TracelbLinkProbe::from_probe(probe, hop.ttl as i32, flow_id as i32)
+                    });
+
+                    let cur_link_details = links_by_reply_addr_by_ttl_by_addr
+                        .entry(start_addr.clone())
+                        .or_default()
+                        .entry(hop.ttl)
+                        .or_default()
+                        .entry(reply_addr.clone())
+                        .or_insert(TracelbLinkDetails {
+                            addr: reply_addr.clone(),
+                            probes: Some(vec![]),
+                        });
+                    if let Some(probes) = &mut cur_link_details.probes {
+                        probes.extend(link_probes);
+                    } else {
+                        cur_link_details.probes = Some(link_probes.collect());
+                    }
+                }
             }
         }
 
@@ -282,28 +327,29 @@ impl From<&Traceroute> for Tracelb {
                 .map(|reply| reply.icmp_q_ttl)
         }
 
-        for (i, (addr, links_by_ttl)) in links_by_ttl_by_addr.into_iter().enumerate() {
-            let mut tracelb_links: Vec<TracelbNodeLinks> = vec![];
-            for (_ttl, links_at_ttl) in links_by_ttl {
+        for (_i, (source_addr, links_by_reply_addr_by_ttl)) in
+            links_by_reply_addr_by_ttl_by_addr.into_iter().enumerate()
+        {
+            let mut tracelb_links = vec![];
+            for (_ttl, links_by_reply_addr) in links_by_reply_addr_by_ttl {
                 let links = TracelbNodeLinks {
-                    links: links_at_ttl,
+                    links: links_by_reply_addr.into_values().collect(),
                 };
                 tracelb_links.push(links);
             }
             let q_ttl = first_icmp_q_ttl(&tracelb_links).unwrap_or(0);
-
             let node = TracelbNode {
-                hop_id: i as u8,
-                addr,
+                hop_id: *hop_ids_by_addr.get(&source_addr).unwrap(),
+                addr: source_addr,
                 name: None,
                 q_ttl,
-                linkc: tracelb_links.len(),
+                linkc: tracelb_links.iter().map(|links| links.links.len()).sum(),
                 links: Some(tracelb_links),
             };
             nodes.push(node);
         }
 
-        let linkc = Some(nodes.iter().map(|node| node.linkc).sum::<usize>() as f64);
+        let linkc = Some(nodes.iter().map(|node| node.linkc).sum::<usize>());
 
         Self {
             type_: "tracelb".to_string(),
@@ -316,14 +362,14 @@ impl From<&Traceroute> for Tracelb {
             probe_size,
             firsthop: None,
             attempts: None,
-            confidence: 0.95,
+            confidence: 0.0,
             tos: None,
             gaplimit: None,
             wait_timeout: None,
             wait_probe: None,
             probec,
             probec_max: None,
-            nodec: Some(nodes.len() as f64),
+            nodec: Some(nodes.len()),
             linkc,
             nodes,
         }
@@ -409,20 +455,24 @@ pub struct TracelbLinkProbe {
 
     /// The flow identifier of this probe.
     #[serde(rename = "Flowid")]
-    pub flowid: Option<i32>,
+    pub flowid: i32,
 
     #[serde(rename = "Replies")]
     pub replies: Option<Vec<ProbeReply>>,
 }
 
-impl From<&pantrace::formats::internal::TracerouteProbe> for TracelbLinkProbe {
-    fn from(probe: &pantrace::formats::internal::TracerouteProbe) -> Self {
+impl TracelbLinkProbe {
+    fn from_probe(
+        probe: &pantrace::formats::internal::TracerouteProbe,
+        ttl: i32,
+        flowid: i32,
+    ) -> Self {
         Self {
             tx: probe.timestamp.into(),
             replyc: if probe.reply.is_some() { 1 } else { 0 },
-            ttl: probe.size as i32,
-            attempt: None,
-            flowid: None,
+            ttl,
+            attempt: Some(0),
+            flowid,
             replies: probe.reply.as_ref().map(|reply| vec![reply.into()]),
         }
     }

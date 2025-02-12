@@ -311,16 +311,18 @@ fn main() -> Result<()> {
             internal_writer.write_traceroute(&traceroute)?;
         }
         OutputFormat::ScamperWarts => {
-            println!("--- Scamper / warts output (binary) ---");
+            debug!("--- Scamper / warts output (binary) ---");
             let stdout = std::io::stdout();
             let mut scamper_writer =
                 pantrace::formats::scamper_trace_warts::ScamperTraceWartsWriter::new(stdout);
             scamper_writer.write_traceroute(&traceroute)?;
         }
         OutputFormat::Scamper1 => {
-            println!("--- Scamper1 output ---");
+            debug!("--- Scamper1 output ---");
             // let stdout = std::io::stdout();
-            let scamper1 = Scamper1::from(&traceroute);
+            let mut scamper1 = Scamper1::from(&traceroute);
+            let tracelb = scamper1.raw.tracelb.as_mut().unwrap();
+            tracelb.confidence = confidence;
             // scamper1 is deserializable to json
             let scamper1_json = serde_json::to_string(&scamper1)?;
             // write the json to stdout
