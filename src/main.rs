@@ -321,8 +321,10 @@ fn main() -> Result<()> {
             debug!("--- Scamper1 output ---");
             // let stdout = std::io::stdout();
             let mut scamper1 = Scamper1::from(&traceroute);
-            let tracelb = scamper1.raw.tracelb.as_mut().unwrap();
-            tracelb.confidence = confidence;
+            scamper1.raw.tracelb.confidence = confidence;
+            scamper1.raw.tracelb.firsthop = min_ttl;
+            scamper1.raw.tracelb.wait_timeout = args.receiver_wait_time as f64;
+            scamper1.raw.tracelb.wait_probe = 100f64 / args.probing_rate as f64;
             // scamper1 is deserializable to json
             let scamper1_json = serde_json::to_string(&scamper1)?;
             // write the json to stdout

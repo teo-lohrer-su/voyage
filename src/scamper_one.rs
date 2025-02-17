@@ -25,27 +25,27 @@ pub struct Scamper1 {
 impl From<&Traceroute> for Scamper1 {
     fn from(traceroute: &Traceroute) -> Self {
         let raw = Raw {
-            metadata: Some(Metadata {
+            metadata: Metadata {
                 uuid: Some(traceroute.measurement_id.clone()),
                 traceroute_caller_version: None,
                 cached_result: None,
                 cached_uuid: None,
-            }),
-            cycle_start: Some(CycleStart {
-                type_: Some("cycle-start".to_string()),
+            },
+            cycle_start: CycleStart {
+                type_: "cycle-start".to_string(),
                 list_name: None,
                 id: None,
                 hostname: None,
-                start_time: Some(traceroute.start_time.timestamp() as f64),
-            }),
-            tracelb: Some(Tracelb::from(traceroute)),
-            cycle_stop: Some(CycleStop {
-                type_: Some("cycle-stop".to_string()),
+                start_time: traceroute.start_time.timestamp(),
+            },
+            tracelb: Tracelb::from(traceroute),
+            cycle_stop: CycleStop {
+                type_: "cycle-stop".to_string(),
                 list_name: None,
                 id: None,
                 hostname: None,
-                stop_time: Some(traceroute.end_time.timestamp() as f64),
-            }),
+                stop_time: traceroute.end_time.timestamp(),
+            },
         };
         let id = String::from(&traceroute.measurement_id);
 
@@ -94,16 +94,16 @@ pub struct Parser {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Raw {
     #[serde(rename = "Metadata")]
-    pub metadata: Option<Metadata>,
+    pub metadata: Metadata,
 
     #[serde(rename = "CycleStart")]
-    pub cycle_start: Option<CycleStart>,
+    pub cycle_start: CycleStart,
 
     #[serde(rename = "Tracelb")]
-    pub tracelb: Option<Tracelb>,
+    pub tracelb: Tracelb,
 
     #[serde(rename = "CycleStop")]
-    pub cycle_stop: Option<CycleStop>,
+    pub cycle_stop: CycleStop,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -128,7 +128,7 @@ pub struct Metadata {
 pub struct CycleStart {
     /// The string “cycle-start”.
     #[serde(rename = "Type")]
-    pub type_: Option<String>,
+    pub type_: String,
 
     /// The name of the IP list file (“/tmp/scamperctl:" for daemon mode, "default" for CLI).
     #[serde(rename = "list_name")]
@@ -144,7 +144,7 @@ pub struct CycleStart {
 
     /// When traceroute started in Unix epoch.
     #[serde(rename = "start_time")]
-    pub start_time: Option<f64>,
+    pub start_time: i64,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -175,7 +175,7 @@ pub struct Tracelb {
     pub probe_size: usize,
 
     /// Where to start probing.
-    pub firsthop: Option<f64>,
+    pub firsthop: u8,
 
     /// Number of attempts per probe.
     pub attempts: Option<usize>,
@@ -190,10 +190,10 @@ pub struct Tracelb {
     pub gaplimit: Option<usize>,
 
     /// Seconds to wait before timeout.
-    pub wait_timeout: Option<f64>,
+    pub wait_timeout: f64,
 
     /// Minimum inter-probe time in 1/100th of seconds per TTL.
-    pub wait_probe: Option<f64>,
+    pub wait_probe: f64,
 
     /// Count of probes sent, including retries.
     pub probec: usize,
@@ -202,10 +202,10 @@ pub struct Tracelb {
     pub probec_max: Option<usize>,
 
     /// The number of nodes in the traceroute.
-    pub nodec: Option<usize>,
+    pub nodec: usize,
 
     /// The number of links in the traceroute.
-    pub linkc: Option<usize>,
+    pub linkc: usize,
 
     pub nodes: Vec<TracelbNode>,
 }
@@ -287,8 +287,7 @@ impl From<&Traceroute> for Tracelb {
                 // ^^ this should be of length one
                 // and the values should be of length one since a single probe has the current flow_id
 
-                for (addr, probes) in probes_by_reply_addr {
-                    let reply_addr = addr.clone();
+                for (reply_addr, probes) in probes_by_reply_addr {
                     let link_probes = probes.into_iter().map(|probe| {
                         TracelbLinkProbe::from_probe(probe, hop.ttl as i32, flow_id as i32)
                     });
@@ -300,14 +299,10 @@ impl From<&Traceroute> for Tracelb {
                         .or_default()
                         .entry(reply_addr.clone())
                         .or_insert(TracelbLinkDetails {
-                            addr: reply_addr.clone(),
-                            probes: Some(vec![]),
+                            addr: reply_addr,
+                            probes: vec![],
                         });
-                    if let Some(probes) = &mut cur_link_details.probes {
-                        probes.extend(link_probes);
-                    } else {
-                        cur_link_details.probes = Some(link_probes.collect());
-                    }
+                    cur_link_details.probes.extend(link_probes);
                 }
             }
         }
@@ -319,7 +314,6 @@ impl From<&Traceroute> for Tracelb {
                 .links
                 .first()?
                 .probes
-                .as_ref()?
                 .first()?
                 .replies
                 .as_ref()?
@@ -327,9 +321,7 @@ impl From<&Traceroute> for Tracelb {
                 .map(|reply| reply.icmp_q_ttl)
         }
 
-        for (_i, (source_addr, links_by_reply_addr_by_ttl)) in
-            links_by_reply_addr_by_ttl_by_addr.into_iter().enumerate()
-        {
+        for (source_addr, links_by_reply_addr_by_ttl) in links_by_reply_addr_by_ttl_by_addr {
             let mut tracelb_links = vec![];
             for (_ttl, links_by_reply_addr) in links_by_reply_addr_by_ttl {
                 let links = TracelbNodeLinks {
@@ -349,7 +341,7 @@ impl From<&Traceroute> for Tracelb {
             nodes.push(node);
         }
 
-        let linkc = Some(nodes.iter().map(|node| node.linkc).sum::<usize>());
+        let linkc = nodes.iter().map(|node| node.linkc).sum::<usize>();
 
         Self {
             type_: "tracelb".to_string(),
@@ -360,16 +352,16 @@ impl From<&Traceroute> for Tracelb {
             dst: traceroute.dst_addr.to_string(),
             start: traceroute.start_time.into(),
             probe_size,
-            firsthop: None,
+            firsthop: 0, // set externally
             attempts: None,
-            confidence: 0.0,
+            confidence: 0.0, // set externally
             tos: None,
             gaplimit: None,
-            wait_timeout: None,
-            wait_probe: None,
+            wait_timeout: 0.0, // set externally
+            wait_probe: 0.0,   // set externally
             probec,
             probec_max: None,
-            nodec: Some(nodes.len()),
+            nodec: nodes.len(),
             linkc,
             nodes,
         }
@@ -432,7 +424,7 @@ pub struct TracelbLinkDetails {
 
     /// The probes that observed this link.
     #[serde(rename = "Probes")]
-    pub probes: Option<Vec<TracelbLinkProbe>>,
+    pub probes: Vec<TracelbLinkProbe>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -544,7 +536,7 @@ impl From<&pantrace::formats::internal::TracerouteReply> for ProbeReply {
 pub struct CycleStop {
     /// The string “cycle-stop”.
     #[serde(rename = "Type")]
-    pub type_: Option<String>,
+    pub type_: String,
 
     /// The name of the IP list file (“/tmp/scamperctl:" for daemon mode, "default" for CLI).
     pub list_name: Option<String>,
@@ -558,5 +550,5 @@ pub struct CycleStop {
     pub hostname: Option<String>,
 
     /// When traceroute finished in Unix epoch.
-    pub stop_time: Option<f64>,
+    pub stop_time: i64,
 }
