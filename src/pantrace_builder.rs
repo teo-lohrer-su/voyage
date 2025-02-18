@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use caracat::models::Reply;
 use chrono::DateTime;
 use itertools::Itertools;
@@ -9,7 +11,8 @@ use crate::links::get_replies_by_flow;
 
 fn reply_to_pantrace_reply(reply: &Reply) -> TracerouteReply {
     TracerouteReply {
-        timestamp: DateTime::from_timestamp_micros(reply.capture_timestamp as i64).unwrap(),
+        timestamp: DateTime::from_timestamp_micros(reply.capture_timestamp.as_micros() as i64)
+            .unwrap(),
         quoted_ttl: reply.quoted_ttl,
         ttl: reply.reply_ttl,
         size: reply.reply_size,
@@ -33,9 +36,10 @@ fn reply_to_pantrace_reply(reply: &Reply) -> TracerouteReply {
 fn reply_to_pantrace_probe(reply: &Reply) -> TracerouteProbe {
     let capture_usec = reply.capture_timestamp;
     let rtt_tenth_msec = reply.rtt as u64;
-    let emission_usec = capture_usec - rtt_tenth_msec * 100;
+    // tenth of milliseconds --> 21 = 2.1 ms = 210 microseconds
+    let emission_usec = capture_usec - Duration::from_micros(rtt_tenth_msec * 100);
     TracerouteProbe {
-        timestamp: DateTime::from_timestamp_micros(emission_usec as i64).unwrap(),
+        timestamp: DateTime::from_timestamp_micros(emission_usec.as_micros() as i64).unwrap(),
         size: reply.probe_size,
         reply: Some(reply_to_pantrace_reply(reply)),
     }

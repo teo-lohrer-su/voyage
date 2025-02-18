@@ -90,7 +90,7 @@ fn test_probe_generator_32() {
     assert_eq!(
         probes
             .iter()
-            .map(|p| format!("{}", p))
+            .map(|p| format!("{:?}", p))
             .collect::<HashSet<_>>()
             .len(),
         6
@@ -126,7 +126,7 @@ fn test_probe_generator_23() {
     assert_eq!(
         probes
             .iter()
-            .map(|p| format!("{}", p))
+            .map(|p| format!("{:?}", p))
             .collect::<HashSet<_>>()
             .len(),
         2

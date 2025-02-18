@@ -3,16 +3,18 @@ use std::net::{IpAddr, Ipv4Addr};
 use std::time::Duration;
 use std::{fmt, vec};
 
-use caracat::high_level::Config;
-
 use chrono::Utc;
 use itertools::Itertools;
 use log::{debug, info};
 use netdev::get_default_interface;
 use pantrace::formats::atlas::AtlasWriter;
-use pantrace::formats::internal::{Protocol, Traceroute};
+use pantrace::formats::flat::FlatWriter;
+use pantrace::formats::internal::{InternalWriter, Protocol, Traceroute};
+use pantrace::formats::iris::IrisWriter;
+use pantrace::formats::scamper_trace_warts::ScamperTraceWartsWriter;
 use pantrace::traits::TracerouteWriter;
 use voyage::algorithms::diamond_miner::DiamondMiner;
+use voyage::caracat_config::CaracatConfig;
 use voyage::classic_traceroute::ClassicTracerouteWriter;
 use voyage::pantrace_builder::replies_to_pantrace_flows;
 use voyage::scamper_one::Scamper1;
@@ -127,12 +129,6 @@ struct Args {
 
 fn main() -> Result<()> {
     env_logger::init();
-    // let dst_addr_str = "12.12.12.12";
-    // let dst_addr_str = "103.37.83.226";
-    // let dst_addr_str = "104.18.32.7";
-    // let dst_addr_str = "157.240.221.35";
-    // let dst_addr_str = "8.8.8.8";
-    // let dst_addr_str = "1.1.1.1";
     let args = Args::parse();
 
     let dst_addr = IpAddr::from(args.dst_addr.parse::<Ipv4Addr>()?);
@@ -164,18 +160,18 @@ fn main() -> Result<()> {
     let start_time = Utc::now();
 
     while !probes.is_empty() {
-        let config = Config {
-            receiver_wait_time: Duration::from_secs(args.receiver_wait_time),
+        let config = CaracatConfig {
             probing_rate: args.probing_rate,
             interface: args
                 .interface
                 .clone()
                 .unwrap_or_else(|| get_default_interface().unwrap().name),
             instance_id: args.id.unwrap_or(0),
-            ..Config::default()
+            ..CaracatConfig::default()
         };
         round += 1;
-        let replies = probe(config, probes.into_iter())?;
+        let wait_time = Duration::from_secs(args.receiver_wait_time);
+        let replies = probe(config, wait_time, probes.into_iter())?;
         debug!(
             "received {} replies including {} time exceeded replies",
             replies.len(),
@@ -261,7 +257,6 @@ fn main() -> Result<()> {
         }
     }
 
-    // let pantrace_flows = replies_to_pantrace_flows(&alg.time_exceeded_replies());
     let pantrace_flows = replies_to_pantrace_flows(&alg.replies());
 
     let traceroute: Traceroute = Traceroute {
@@ -271,6 +266,7 @@ fn main() -> Result<()> {
         start_time,
         end_time,
         protocol: Protocol::ICMP,
+        // todo: change for correct source address
         src_addr: IpAddr::from(Ipv4Addr::new(192, 168, 1, 1)),
         src_addr_public: None,
         dst_addr,
@@ -295,26 +291,25 @@ fn main() -> Result<()> {
         OutputFormat::Iris => {
             debug!("--- Iris output ---");
             let stdout = std::io::stdout();
-            let mut iris_writer = pantrace::formats::iris::IrisWriter::new(stdout);
+            let mut iris_writer = IrisWriter::new(stdout);
             iris_writer.write_traceroute(&traceroute)?;
         }
         OutputFormat::Flat => {
             debug!("--- flat / MetaTrace output ---");
             let stdout = std::io::stdout();
-            let mut flat_writer = pantrace::formats::flat::FlatWriter::new(stdout);
+            let mut flat_writer = FlatWriter::new(stdout);
             flat_writer.write_traceroute(&traceroute)?;
         }
         OutputFormat::Internal => {
             debug!("--- internal / Pantrace output ---");
             let stdout = std::io::stdout();
-            let mut internal_writer = pantrace::formats::internal::InternalWriter::new(stdout);
+            let mut internal_writer = InternalWriter::new(stdout);
             internal_writer.write_traceroute(&traceroute)?;
         }
         OutputFormat::ScamperWarts => {
             debug!("--- Scamper / warts output (binary) ---");
             let stdout = std::io::stdout();
-            let mut scamper_writer =
-                pantrace::formats::scamper_trace_warts::ScamperTraceWartsWriter::new(stdout);
+            let mut scamper_writer = ScamperTraceWartsWriter::new(stdout);
             scamper_writer.write_traceroute(&traceroute)?;
         }
         OutputFormat::Scamper1 => {
