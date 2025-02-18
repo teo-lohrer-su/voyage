@@ -5,7 +5,7 @@ use std::{fmt, vec};
 
 use chrono::Utc;
 use itertools::Itertools;
-use log::{debug, info};
+use log::{debug, info, trace};
 use netdev::get_default_interface;
 use pantrace::formats::atlas::AtlasWriter;
 use pantrace::formats::flat::FlatWriter;
@@ -158,21 +158,21 @@ fn main() -> Result<()> {
     );
 
     let start_time = Utc::now();
+    let config = CaracatConfig {
+        probing_rate: args.probing_rate,
+        interface: args
+            .interface
+            .clone()
+            .unwrap_or_else(|| get_default_interface().unwrap().name),
+        instance_id: args.id.unwrap_or(0),
+        ..CaracatConfig::default()
+    };
+    let wait_time = Duration::from_secs(args.receiver_wait_time);
 
     while !probes.is_empty() {
-        let config = CaracatConfig {
-            probing_rate: args.probing_rate,
-            interface: args
-                .interface
-                .clone()
-                .unwrap_or_else(|| get_default_interface().unwrap().name),
-            instance_id: args.id.unwrap_or(0),
-            ..CaracatConfig::default()
-        };
         round += 1;
-        let wait_time = Duration::from_secs(args.receiver_wait_time);
-        let replies = probe(config, wait_time, probes.into_iter())?;
-        debug!(
+        let replies = probe(&config, wait_time, probes.into_iter())?;
+        trace!(
             "received {} replies including {} time exceeded replies",
             replies.len(),
             replies.iter().filter(|r| r.is_time_exceeded()).count()
@@ -184,7 +184,7 @@ fn main() -> Result<()> {
 
         let prep_end = Utc::now();
 
-        debug!(
+        trace!(
             "Preparation time: {:.3}s",
             (prep_end - prep_start).num_milliseconds() as f64 * 1e-3
         );

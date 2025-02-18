@@ -14,7 +14,7 @@ use caracat::{
 use crate::{caracat_config::CaracatConfig, receiver::ReceiveCache, send_loop::SendLoop};
 
 pub fn probe<T: Iterator<Item = Probe>>(
-    config: CaracatConfig,
+    config: &CaracatConfig,
     wait_time: Duration,
     probes: T,
 ) -> Result<Vec<Reply>> {
